@@ -1,0 +1,12 @@
+diff --git a/var/spack/repos/builtin/packages/sgpp/package.py b/var/spack/repos/builtin/packages/sgpp/package.py
+index a37086d7ae..1e4acc4040 100644
+--- a/var/spack/repos/builtin/packages/sgpp/package.py
++++ b/var/spack/repos/builtin/packages/sgpp/package.py
+@@ -19,6 +19,7 @@ class Sgpp(SConsPackage):
+ 
+     # Versions with Python 3 bindings:
+     version('master', branch='master')
++    version('adaptive_combigrid_convenience', branch='extend_adaptive_combigrid_convenience')
+     version('3.3.0', sha256='ca4d5b79f315b425ce69b04940c141451a76848bf1bd7b96067217304c68e2d4')
+     version('3.2.0', sha256='dab83587fd447f92ed8546eacaac6b8cbe65b8db5e860218c0fa2e42f776962d')
+     # Versions with Python 2 bindings:
