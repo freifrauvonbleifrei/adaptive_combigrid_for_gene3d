@@ -1,4 +1,4 @@
-
+#!/bin/bash
 
 
 git clone https://github.com/spack/spack.git spack-sgpp
@@ -20,8 +20,7 @@ git am < ../adaptive_combigrid_convenience.patch
 
 # load sgpp paths -- do this every time you need pysgpp on your PATH
 . ./share/spack/setup-env.sh
-spack load sgpp
+spack load sgpp@adaptive_combigrid_convenience
 
 cd ..
 git clone git@gitlab.mpcdf.mpg.de:tpoll/gene-diag.git
-

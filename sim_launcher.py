@@ -117,7 +117,7 @@ def dispatch_to_run(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_v
     #geometryfile = glob.glob(geometryfile)[0]
     ## print(geometryfile)
     #copy2(geometryfile, prob_dir)
-    
+
     # submit
     subprocess.run(os.environ.get('ADAPTATION_SUBMIT_COMMAND')+ " " + qname, shell=True, cwd=prob_dir)
 
