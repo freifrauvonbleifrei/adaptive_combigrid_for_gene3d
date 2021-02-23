@@ -4,9 +4,10 @@
 git clone https://github.com/spack/spack.git spack-sgpp
 cd spack-sgpp
 
-git am < ../adaptive_combigrid_convenience.patch
+git apply ../adaptive_combigrid_convenience.patch
 ./bin/spack compiler find
-./bin/spack spec sgpp@adaptive_combigrid_convenience+combigrid+python
+
+./bin/spack spec sgpp@adaptive_combigrid_convenience+combigrid+python%intel || ./bin/spack spec sgpp@adaptive_combigrid_convenience+combigrid+python
 # in case of version conflicts, may need to restrict dependency versions further
 # e.g., on my laptop:
 #./bin/spack spec sgpp@adaptive_combigrid_convenience+combigrid+python^py-numpy@1.17:1.18^py-scipy@1.3:1.5^py-setuptools@:40
