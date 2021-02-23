@@ -5,7 +5,7 @@ import pandas as pd
 import math
 # import kinds
 
-# needs export PYTHONPATH=/hppfs/work/pn34mi/di39qun2/SGpp/lib:/hppfs/work/pn34mi/di39qun2/SGpp/lib/pysgpp:$PYTHONPATH
+# this needs `spack load sgpp@adaptive_combigrid_convenience` 
 import pysgpp
 
 import Qes_data
@@ -35,13 +35,11 @@ def thingToStringList(thing):
 
 class DimensionalAdaptation:
     def __init__(self, lmin, lmax, omega=1., \
-                prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/",\
-                gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/",\
-                template_path="/hppfs/work/pn34mi/di39qun2/ParameterFiles/gene3d-qoi/",\
+                prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'),\
+                gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'),\
                 output3d=False):
         self.prob_prepath=prob_prepath
         self.gene_path=gene_path
-        self.template_path=template_path
         self.output3d=output3d
         self.lmin=lmin
         self.lmax=lmax
@@ -136,10 +134,13 @@ class DimensionalAdaptation:
                                 print("sim_launcher: restart "+str(activeLevelVector))
                                 sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector)
                             # else, we are just waiting for the simulation to run long enough
-                        else: 
-                            # start a simulation
-                            print("sim_launcher: start "+str(activeLevelVector))
-                            sim_launcher.dispatch_to_run(self.prob_prepath, activeLevelVector, self.gene_path, self.template_path)
+                        else:
+                            if any(activeLevelVector > self.lmax):
+                                print("reached maximum resolution at "+str(activeLevelVector))
+                            else:
+                                # start a simulation
+                                print("sim_launcher: start "+str(activeLevelVector))
+                                sim_launcher.dispatch_to_run(self.prob_prepath, activeLevelVector, self.gene_path)
                         waitingForNumberOfResults+=1
                 else: 
                     waitingForResults=False

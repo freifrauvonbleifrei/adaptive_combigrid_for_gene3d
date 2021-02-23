@@ -10,19 +10,21 @@ from shutil import copyfile, copy2
 def l_vec_to_string(l):
     return "prob_" + str("_".join([str(l_i) for l_i in l]))
 
-def get_prob_path(prob_prepath, level_vector):
+def get_prob_path(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
     return os.path.join(prob_prepath, l_vec_to_string(level_vector))
 
-def check_folder_exists(prob_prepath, level_vector):
+def check_folder_exists(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
     return os.path.isfile(os.path.join(get_prob_path(prob_prepath, level_vector), 'parameters'))
 
-def check_finished(prob_prepath, level_vector):
+def check_finished(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
     # if the simulation has run, but not long enough
     if os.path.isfile(os.path.join(get_prob_path(prob_prepath, level_vector), 'GENE.finished')):
         return True
     return False
 
-def restart_sim(prob_prepath, gene_path, level_vector):
+def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'), level_vector=None):
+    assert (level_vector)
+    assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
     assert (check_finished(prob_prepath, level_vector))
     # if the simulation has run, but not long enough
     prob_dir=get_prob_path(prob_prepath, level_vector)
@@ -36,6 +38,8 @@ def restart_sim(prob_prepath, gene_path, level_vector):
     with open(prob_dir + "/parameters", 'r') as pfile:
         oldpdata = pfile.read()
     newpdata = oldpdata.replace(
+        "read_checkpoint = F", "read_checkpoint = T")
+    newpdata = oldpdata.replace(
         "read_checkpoint  = F", "read_checkpoint  = T")
     with open(prob_dir + '/parameters', 'w') as pfile:
         pfile.write(newpdata)
@@ -43,14 +47,15 @@ def restart_sim(prob_prepath, gene_path, level_vector):
     os.remove(prob_dir + '/GENE.finished')
     print("resubmitting for " + str(prob_dir))
     # submit
-    subprocess.run("sbatch " + qname, shell=True, cwd=prob_dir)
+    subprocess.run(os.environ.get('ADAPTATION_SUBMIT_COMMAND')+ " " + qname, shell=True, cwd=prob_dir)
 
 
-def dispatch_to_run(prob_prepath, level_vector, gene_directory, template_directory):
+def dispatch_to_run(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None, gene_directory=os.environ.get('ADAPTATION_GENE3D_PATH')):
     assert not (check_folder_exists(prob_prepath, level_vector))
-    with open(os.path.join(template_directory, "parameters_flw_template"), 'r') as pfile:
+    assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
+    with open(os.environ.get('ADAPTATION_PARAMETER_FILE_TEMPLATE'), 'r') as pfile:
         pdata = pfile.read()
-    with open(os.path.join(template_directory, "sbatch_template.sh"), 'r') as qfile:
+    with open(os.environ.get('ADAPTATION_SUBMIT_SCRIPT_TEMPLATE'), 'r') as qfile:
         qdata = qfile.read()
 
     # create the folders
@@ -114,19 +119,20 @@ def dispatch_to_run(prob_prepath, level_vector, gene_directory, template_directo
     #copy2(geometryfile, prob_dir)
     
     # submit
-    subprocess.run("sbatch " + qname, shell=True, cwd=prob_dir)
+    subprocess.run(os.environ.get('ADAPTATION_SUBMIT_COMMAND')+ " " + qname, shell=True, cwd=prob_dir)
 
 
 # if called directly, run tests
 if __name__ == "__main__":
-    prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
-    gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/"
-    template_path="/hppfs/work/pn34mi/di39qun2/ParameterFiles/gene3d-qoi/"
+    #prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
+    prob_prepath=os.environ.get('ADAPTATION_PROB_PATH')
+    #gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/"
     #lvs = [[6, 5, 5, 5, 3],[5, 6, 5, 5, 3],[5, 5, 5, 6, 3],[5, 5, 5, 5, 4]]
     lvs = [[7,5,5,5,3], [6,6,5,5,3]]
+    lvs = [[7,7,7,7,7]]
     for lv in lvs:
     #lv = [5, 5, 5, 5, 3]
-        print (get_prob_path(prob_prepath, lv))
-        dispatch_to_run(prob_prepath, lv, gene_path, template_path)
+        print (get_prob_path(level_vector=lv))
+        dispatch_to_run(prob_prepath, lv)
         #restart_sim(prob_prepath, gene_path, lv)
         print(check_folder_exists(prob_prepath, lv), check_finished(prob_prepath, lv))

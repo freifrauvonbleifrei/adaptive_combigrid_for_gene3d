@@ -8,6 +8,7 @@ import pandas as pd
 import h5py
 import subprocess
 from shutil import copyfile, copy2
+import autocorr_pydiag
 import autocorr_johannes
 import sim_launcher
 
@@ -103,13 +104,14 @@ def get_time_error(frame, printOutput=False, autocorr_time=None):
 
 
 class Qes_data:
-    def __init__(self, level_vector, prob_prepath, gene_path=, template_path=):
+    def __init__(self, level_vector, \
+            prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'),\
+            gene_path=os.environ.get('ADAPTATION_GENE3D_PATH')):
         self.gene_path = gene_path
         if ~(gene_path == None):
             assert os.path.isdir(gene_path)
         self.level_vector=level_vector
         self.prob_directory = sim_launcher.get_prob_path(prob_prepath, level_vector)
-        self.template_path = template_path
         self.frame = None
         self.crop_time = 150
         self.results_csv = 'qes_results_flw.csv'
@@ -148,7 +150,7 @@ class Qes_data:
         current_results.to_csv(self.results_csv)
 
     def set_delta_to_csv(self, delta, geometry=''):
-        return self.set_csv(delta)
+        return self.set_csv(delta)        
 
     def get_from_csv(self, level_vector):
         current_results = pd.read_csv(self.results_csv, index_col=0)
@@ -370,10 +372,9 @@ class Qes_data:
 if __name__ == "__main__":
     #lv = [5, 6, 6, 5, 3]
     lv = [5,5,5,6,3]
-    prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
-    gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/"
-    template_path="/hppfs/work/pn34mi/di39qun2/ParameterFiles/gene3d-qoi/"
-    qes_data = Qes_data(lv, prob_prepath, gene_path, template_path)
+    #prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
+    #gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/"
+    qes_data = Qes_data(lv)
     #qes_gplot = qes_data.get_result_gplot()
     qes = qes_data.get_result()
     frame = qes_data.get_frame()
