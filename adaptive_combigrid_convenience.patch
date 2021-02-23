@@ -1,5 +1,5 @@
 diff --git a/var/spack/repos/builtin/packages/sgpp/package.py b/var/spack/repos/builtin/packages/sgpp/package.py
-index a37086d7ae..1e4acc4040 100644
+index a37086d7ae..db032bd8fe 100644
 --- a/var/spack/repos/builtin/packages/sgpp/package.py
 +++ b/var/spack/repos/builtin/packages/sgpp/package.py
 @@ -19,6 +19,7 @@ class Sgpp(SConsPackage):
@@ -10,3 +10,33 @@ index a37086d7ae..1e4acc4040 100644
      version('3.3.0', sha256='ca4d5b79f315b425ce69b04940c141451a76848bf1bd7b96067217304c68e2d4')
      version('3.2.0', sha256='dab83587fd447f92ed8546eacaac6b8cbe65b8db5e860218c0fa2e42f776962d')
      # Versions with Python 2 bindings:
+@@ -44,6 +45,9 @@ class Sgpp(SConsPackage):
+     # Fixes compilation with AVX512 and datadriven
+     # Fixed in SGpp in PR https://github.com/SGpp/SGpp/pull/229
+     patch('avx512_datadriven_compilation.patch', when='@:3.3.0+datadriven')
++    # Adaptive Combigrid: set weight to one (not parameterizable from python yet)
++    patch('weight_to_one.patch', when='@adaptive_combigrid_convenience')
++
+ 
+     variant('python', default=True,
+             description='Provide Python bindings for SGpp')
+diff --git a/var/spack/repos/builtin/packages/sgpp/weight_to_one.patch b/var/spack/repos/builtin/packages/sgpp/weight_to_one.patch
+new file mode 100644
+index 0000000000..a84c990787
+--- /dev/null
++++ b/var/spack/repos/builtin/packages/sgpp/weight_to_one.patch
+@@ -0,0 +1,14 @@
++diff --git a/combigrid/src/sgpp/combigrid/adaptive/WeightedRelevanceCalculator.hpp b/combigrid/src/sgpp/combigrid/adaptive/WeightedRelevanceCalculator.hpp
++index c4ed4e9c4..b0bfd322f 100644
++--- a/combigrid/src/sgpp/combigrid/adaptive/WeightedRelevanceCalculator.hpp
+++++ b/combigrid/src/sgpp/combigrid/adaptive/WeightedRelevanceCalculator.hpp
++@@ -21,7 +21,7 @@ namespace combigrid {
++ class WeightedRelevanceCalculator : public RelevanceCalculator {
++  public:
++   explicit WeightedRelevanceCalculator(
++-      double weightDeltaInRelationToNumberOfPoints = 0.5,
+++      double weightDeltaInRelationToNumberOfPoints = 1,
++       FullGrid::LevelOccupancy levelOccupancy = FullGrid::LevelOccupancy::TwoToThePowerOfL);
++ 
++   double calculate(const LevelVector& levelVector, double delta) const override;
++
