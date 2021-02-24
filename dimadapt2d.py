@@ -84,7 +84,7 @@ class DimensionalAdaptation:
         waitingForResults=False
         waitingForNumberOfResults=0
         while (len(self.adaptiveGeneratorElectrons.getOldSet()) < numGrids) and \
-                (totalSEM < absAdaptedDelta) and \
+                (totalSEM < 2.* absAdaptedDelta) and \
                 waitingForNumberOfResults < 5 and \
                 ~(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True

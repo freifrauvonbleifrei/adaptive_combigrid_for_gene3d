@@ -34,4 +34,6 @@ module load python/3.6_intel
 . ./spack-sgpp/share/spack/setup-env.sh
 spack load sgpp
 
+. ./adaptation_parameters.sh
+
 python3 run_adaptive_scheme_2d.py
