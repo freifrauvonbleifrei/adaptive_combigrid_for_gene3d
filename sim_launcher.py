@@ -22,7 +22,7 @@ def check_finished(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_ve
         return True
     return False
 
-def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'), level_vector=None):
+def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'), level_vector=None, newSimTime=None):
     assert (level_vector)
     assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
     assert (check_finished(prob_prepath, level_vector))
@@ -39,8 +39,12 @@ def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=o
         oldpdata = pfile.read()
     newpdata = oldpdata.replace(
         "read_checkpoint = F", "read_checkpoint = T")
-    newpdata = oldpdata.replace(
+    newpdata = newpdata.replace(
         "read_checkpoint  = F", "read_checkpoint  = T")
+    if newSimTime:
+        newpdata, numSubstitutions = re.subn(r'simtimelim.*$',r'simtimelim = '+ str(newSimTime),newpdata, flags=re.MULTILINE)
+        assert(numSubstitutions > 0)
+
     with open(prob_dir + '/parameters', 'w') as pfile:
         pfile.write(newpdata)
     qname = "submit.sh"

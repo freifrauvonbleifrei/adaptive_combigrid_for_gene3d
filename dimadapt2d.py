@@ -88,14 +88,14 @@ class DimensionalAdaptation:
                 waitingForNumberOfResults < 5 and \
                 ~(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True
-            waitingForNumberOfResults=0            
+            waitingForNumberOfResults=0
 
             # iterate the whole active set
             for activeLevelVector in self.adaptiveGeneratorElectrons.getActiveSet():
                 #print(activeLevelVector, waitingForNumberOfResults)
                 #print(not (self.adaptiveGeneratorElectrons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))))
                 # store QoI information if we have not done it already 
-                
+
                 if (not self.adaptiveGeneratorElectrons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
                     print(activeLevelVector, waitingForNumberOfResults)
                     qes_data = Qes_data.Qes_data(activeLevelVector)
@@ -118,13 +118,20 @@ class DimensionalAdaptation:
                         delta = [self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector),
                                 self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
                         qes_data.set_delta_to_csv(delta)
-                        if qes_data.how_long_run() < self.minimum_time_length:
+                        if (qes_data.how_long_run() < self.minimum_time_length):
                         #prolong simulation
                             if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
                                 if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
                                     # restart the simulation
                                     print("sim_launcher: restart "+str(activeLevelVector))
                                     sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector)
+                        elif (sem[0] > 0.07*result[0]) or (sem[1] > 0.07*result[1]):
+                        #prolong simulation
+                            if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
+                                if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
+                                    # restart the simulation
+                                    print("sim_launcher: restart because of SEM "+str(activeLevelVector))
+                                    sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector, qes_data.how_long_run() + self.minimum_time_length)
 
                     else:
                         # start or prolong simulations
@@ -148,13 +155,13 @@ class DimensionalAdaptation:
                 # adapt to the next best level: the one with the most relative change
                 currentElectrons = self.adaptiveGeneratorElectrons.getCurrentResult()
                 currentIons = self.adaptiveGeneratorIons.getCurrentResult()
-                
+
                 # identify the next most relevant levels
                 levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
                 levelIons = self.adaptiveGeneratorIons.getMostRelevant()
                 deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)
                 deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)                
-                
+
                 #print(list(i for i in levelElectrons),list(i for i in levelIons))
                 #print(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet())
                 #print(self.adaptiveGeneratorIons.getRelevanceOfActiveSet())
@@ -186,7 +193,7 @@ class DimensionalAdaptation:
                     )
                     #print(len(self.adaptiveGeneratorElectrons.getOldSet()), \
                     #      len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()))
-        
+
                     # update totalSEM and absAdaptedDelta to check the termination criterion
                     if adaptedByElectrons:
                         totalSEM=self.adaptiveSEMElectrons.getCurrentResult()
@@ -198,12 +205,20 @@ class DimensionalAdaptation:
                 except RuntimeError:
                     # means that smaller-level results are missing
                     pass
-                    
+
         print(len(self.adaptiveGeneratorElectrons.getOldSet()) < numGrids, (totalSEM < absAdaptedDelta), \
                 not waitingForResults, waitingForNumberOfResults < 5, \
                 not(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0))
+        if(len(self.adaptiveGeneratorElectrons.getOldSet()) > numGrids):
+            print("Terminated because desired number of grids was reached ("+str(numGrids)+"): we are done.")
+        if (totalSEM > absAdaptedDelta):
+            print("Terminated because stopping criterion was reached (SEM of "+str(totalSEM)+\
+                    " is higher than delta of "+str(absAdaptedDelta)+\
+                    "): maybe the adaptation continues when simulations have run longer -- check your job queue.")
+        if (waitingForResults or waitingForNumberOfResults > 4 or len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0)):
+            print("Terminated because waiting for results of simulation runs: we are not done yet.")
 
-        # print output 
+        # print output
         try:
             print("final result: " + str(self.adaptiveGeneratorElectrons.getCurrentResult()) \
                           + "; "  + str(self.adaptiveGeneratorIons.getCurrentResult())\
