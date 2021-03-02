@@ -85,7 +85,7 @@ class DimensionalAdaptation:
 
         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
             print("please run the initial simulation longer!")
-            #assert(False)
+            assert(False)
 
 
     def run_dimadapt_algorithm(self, numGrids=10):
