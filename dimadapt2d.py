@@ -43,13 +43,19 @@ class DimensionalAdaptation:
         self.output3d=output3d
         self.lmin=lmin
         self.lmax=lmax
-        self.minimum_time_length=500
+        self.minimum_time_length=float(os.environ.get('ADAPTATION_PARAM_MIN_RUNTIME'))
+        #self.minimum_time_length=500
+        self.termination_criterion_sem_factor=float(os.environ.get('ADAPTATION_PARAM_TERMINATION_CRITERION_SEM_FACTOR'))
+        #self.termination_criterion_sem_factor=1.5
+        self.minimum_nwin=int(os.environ.get('ADAPTATION_PARAM_SEM_MINIMUM_NUMBER_WINDOWS'))
+        #self.minimum_nwin=3
 
         dim = len(lmin)
         lmin = pysgpp.LevelVector(lmin)
         levels = pysgpp.LevelVectorVector(1,lmin)
         weightedRelevanceCalculator=pysgpp.WeightedRelevanceCalculator(omega)
         #TODO allow passing relevance generator with own omega -- for now setting omega to 1. in sgpp manually
+        assert(omega == 1.)
         self.adaptiveGeneratorElectrons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         self.adaptiveGeneratorIons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         
@@ -77,6 +83,10 @@ class DimensionalAdaptation:
                       + "; "  + str(self.adaptiveSEMIons.getCurrentResult()) + "]"\
         )
 
+        if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
+            print("please run the initial simulation longer!")
+            #assert(False)
+
 
     def run_dimadapt_algorithm(self, numGrids=10):
         absAdaptedDelta = 100000. # kinds.default_float_kind.MAX
@@ -84,7 +94,7 @@ class DimensionalAdaptation:
         waitingForResults=False
         waitingForNumberOfResults=0
         while (len(self.adaptiveGeneratorElectrons.getOldSet()) < numGrids) and \
-                (totalSEM < 2.* absAdaptedDelta) and \
+                (totalSEM < self.termination_criterion_sem_factor* absAdaptedDelta) and \
                 waitingForNumberOfResults < 5 and \
                 ~(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True
@@ -118,7 +128,7 @@ class DimensionalAdaptation:
                         delta = [self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector),
                                 self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
                         qes_data.set_delta_to_csv(delta)
-                        if (qes_data.how_long_run() < self.minimum_time_length):
+                        if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
                         #prolong simulation
                             if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
                                 if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
@@ -215,7 +225,7 @@ class DimensionalAdaptation:
                 not(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0))
         if(len(self.adaptiveGeneratorElectrons.getOldSet()) > numGrids):
             print("Terminated because desired number of grids was reached ("+str(numGrids)+"): we are done.")
-        if (totalSEM > absAdaptedDelta):
+        if (totalSEM > self.termination_criterion_sem_factor * absAdaptedDelta):
             print("Terminated because stopping criterion was reached (SEM of "+str(totalSEM)+\
                     " is higher than delta of "+str(absAdaptedDelta)+\
                     "): maybe the adaptation continues when simulations have run longer -- check your job queue.")

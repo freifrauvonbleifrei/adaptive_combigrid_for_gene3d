@@ -96,7 +96,7 @@ def get_time_error(frame, printOutput=False, autocorr_time=None):
     #    autocorr_time = get_autocorrelation_time(frame)
     serror = [0., 0.]
     for species in [0,1]:
-        _, serror[species] = autocorr_johannes.get_mean_error(frame['time'].copy().values, 
+        _, serror[species], nwin = autocorr_johannes.get_mean_error(frame['time'].copy().values, 
             frame['Q_es'+str(species)].copy().values, printOutput=printOutput)
     # Q_em is always 0 in our examples
     # Alejandro says: does not need to be > 0assert frame['Q_es'].ge(frame["Q_em"]).all()
@@ -113,8 +113,8 @@ class Qes_data:
         self.level_vector=level_vector
         self.prob_directory = sim_launcher.get_prob_path(prob_prepath, level_vector)
         self.frame = None
-        self.crop_time = 150
-        self.results_csv = 'qes_results_flw.csv'
+        self.crop_time = float(os.environ.get('ADAPTATION_PARAM_CROP_TIME'))
+        self.results_csv = os.environ.get('ADAPTATION_RESULTS_CSV')
 
     def set_csv(self, delta=None):
         return self.set_result_to_csv(self.get_result(), self.frame.time.iloc[0],
@@ -339,21 +339,31 @@ class Qes_data:
                                        self.get_last_output_file(), self.frame),  # TODO
                                    autocorrelation_time=get_autocorrelation_time(
                                        self.frame),
-                                   time_error=self.get_time_error(level_vector), geometry=self.prob_prefix, surplus=surplus)
+                                   time_error=self.get_time_error(), geometry=self.prob_prefix, surplus=surplus)
 
     def get_time_error(self):
         if self.gene_path is None:
             time_error = self.get_time_error_csv(self.level_vector)
         else:
             time_error = get_time_error(self.frame)
+        #for species in [0,1]:
+        #    nwin = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
+        #    print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
         return time_error
 
-    def get_autocorrelation_time(self, level_vector):
+    def how_many_nwin_run(self):
+        nwin = [0, 0]
+        for species in [0,1]:
+            nwin[species] = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
+            #print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
+        return min(nwin)
+
+    def get_autocorrelation_time(self, species):
         if self.gene_path is None:
             autocorrelation_time = self.get_autocorrelation_time_csv(
-                level_vector)
+                species)
         else:
-            autocorrelation_time = get_autocorrelation_time(self.frame)
+            autocorrelation_time = get_autocorrelation_time(self.frame)[species]
         return autocorrelation_time
 
     def get_total_cost(self):

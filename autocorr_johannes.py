@@ -9,6 +9,22 @@ import scipy.interpolate as spi
 #plt.style.use('seaborn-whitegrid')
 
 
+def get_number_of_autocorrelation_windows(x,y,clearDoubleTimes=True,takeCombiTimes=False,printOutput=False):
+    # shamelessly copied from next function
+    autocorrtime, autocorrindex, yeven, datamean = get_autocorr_time(x,y,clearDoubleTimes,takeCombiTimes,printOutput)
+
+    windowindexspan = 5*autocorrindex
+    Nwin = int(len(yeven)//windowindexspan+1)
+    assert Nwin > 0
+    if len(yeven) <= (Nwin-1)*windowindexspan:
+        Nwin -=1
+    if printOutput:
+        print(len(yeven), str((Nwin-1)*windowindexspan))
+        print("Nwin: "+str(Nwin))
+        print()
+    return Nwin
+
+
 def get_mean_error(x,y,clearDoubleTimes=True,takeCombiTimes=False,printOutput=False):
     """
     Es nimmt als input zwei 1D arrays x, y (Zeitwerte und QoI-werte) und
@@ -54,7 +70,7 @@ def get_mean_error(x,y,clearDoubleTimes=True,takeCombiTimes=False,printOutput=Fa
         print("SEM: "+str(sbatch))
         print("-------------")
         print()
-    return (datamean,sbatch)
+    return (datamean, sbatch, Nwin)
 
 
 def get_autocorr_time(x,y,clearDoubleTimes=True,takeCombiTimes=False,printOutput=False):

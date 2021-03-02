@@ -131,6 +131,7 @@ if __name__ == "__main__":
     #prob_prepath="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
     prob_prepath=os.environ.get('ADAPTATION_PROB_PATH')
     #gene_path="/hppfs/work/pn34mi/di68xux2/myGene3d/"
+    gene_path=os.environ.get('ADAPTATION_GENE3D_PATH')
     #lvs = [[6, 5, 5, 5, 3],[5, 6, 5, 5, 3],[5, 5, 5, 6, 3],[5, 5, 5, 5, 4]]
     lvs = [[7,5,5,5,3], [6,6,5,5,3]]
     lvs = [[7,7,7,7,7]]
