@@ -19,6 +19,7 @@ if ./bin/spack spec sgpp@adaptive_combigrid_convenience+combigrid+python%intel^s
     # ./bin/spack external find
     # if you are on cobra, run this to find python packages:
     # git apply ../cobra_spack_python.patch
+    # git apply ../marconi_spack_python.patch
 
     # this here can take a long time:
     ./bin/spack install sgpp@adaptive_combigrid_convenience+combigrid+python%intel^swig@3.0.12
