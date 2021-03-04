@@ -2,6 +2,7 @@
 
 import os
 import sys
+import subprocess
 
 import math
 import numpy as np
@@ -12,6 +13,7 @@ from bokeh.models import Legend, Band, ColumnDataSource, Span, RangeSlider, Rang
 from bokeh.plotting import figure, show, output_notebook
 from bokeh.io import export_svgs
 
+from Qes_data import get_num_species
 
 import h5py
 
@@ -91,9 +93,11 @@ print("Running the scheme " + combiSchemeMode + " took approximately " + str(get
 
 # In[6]:
 
+# extract the flux profiles
+subprocess.run("./extract_flux_profiles.sh", shell=True)
 
 def get_filenames(probname):
-    fnames = [('./results-flw/flux_diags/flux_profile_ions_'+ str(x) +'.h5', './results-flw/flux_diags/flux_profile_electrons_'+ str(x) +'.h5') for x in probname]
+    fnames = [('./flux_diags/flux_profile_ions_'+ str(x) +'.h5', './flux_diags/flux_profile_electrons_'+ str(x) +'.h5') for x in probname]
     return fnames
 filenames = get_filenames(combiScheme['probname'])
 
@@ -155,14 +159,14 @@ fluxes, Xresampled = filenames_to_fluxes(filenames)
 
 
 def get_combi_flux(fluxes, combiScheme):
-    combi_flux0 = [fluxes[combiScheme.loc[x]['probname']][0][QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
-    combi_flux1 = [fluxes[combiScheme.loc[x]['probname']][1][QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
-    combi_flux0 = pd.DataFrame(data=combi_flux0).sum()
-    combi_flux1 = pd.DataFrame(data=combi_flux1).sum()
-    combi_flux0 = pd.DataFrame(data={QoI: combi_flux0, 'x_a': Xresampled})
-    combi_flux1 = pd.DataFrame(data={QoI: combi_flux1, 'x_a': Xresampled})
-    print(len(fluxes))
-    return (combi_flux0, combi_flux1)
+    # print(len(fluxes))
+    combi_flux= []
+    for species in range(get_num_species()):
+        combi_flux_species = [fluxes[combiScheme.loc[x]['probname']][species][QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
+        combi_flux_species = pd.DataFrame(data=combi_flux_species).sum()
+        combi_flux_species = pd.DataFrame(data={QoI: combi_flux_species, 'x_a': Xresampled})
+        combi_flux.append(combi_flux_species)
+    return combi_flux
 combi_flux = get_combi_flux(fluxes, combiScheme)    
 
 
@@ -236,8 +240,9 @@ def get_plot(df, label=None, color=None, display_legend=False, width=None, heigh
 # In[10]:
 
 
-plot_combi = get_plot(combi_flux[1], label="combi electrons" ,display_legend=True, width=1400)
-plot_combi = add_to_plot(plot_combi, combi_flux[0], label="combi ions", display_legend=True)
+plot_combi = get_plot(combi_flux[0], label="combi ions" ,display_legend=True, width=1400)
+if get_num_species() > 1:
+    plot_combi = add_to_plot(plot_combi, combi_flux[1], label="combi electrons", display_legend=True)
 plot_combi.output_backend = "svg"
 export_svgs([plot_combi], filename=combiSchemeMode[:-4] + "Combi.svg")
 output_notebook()
@@ -258,11 +263,13 @@ for i in range(len(fluxes)):
         if multiplyWithCoefficient:
             fluxes_multiplied_with_coefficient[probname][species][QoI] = fluxes[probname][species][QoI] * combiScheme.iloc[i]['coefficient']
     
-plot_scheme_mult_in_one = get_plot(fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][1],label=combiScheme.iloc[0]['probname']+" electrons")
-plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]['probname']+" ions")
+plot_scheme_mult_in_one = get_plot( fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]['probname']+" ions")
+if get_num_species() > 1:
+    plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][1],label=combiScheme.iloc[0]['probname']+" electrons")
 for i in range(len(combiScheme[1:])):
     plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][0], label=combiScheme.iloc[i+1]['probname']+" ions")
-    plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
+    if get_num_species() > 1:
+        plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
 
 
 # In[12]:
@@ -282,10 +289,12 @@ show(plot_scheme_mult_in_one)
 
 
 plot_scheme_in_one = get_plot(fluxes[combiScheme.iloc[0]['probname']][0],label=combiScheme.iloc[0]['probname']+" ions")
-plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[0]['probname']][1], label=combiScheme.iloc[0]['probname']+" electrons")
+if get_num_species() > 1:
+    plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[0]['probname']][1], label=combiScheme.iloc[0]['probname']+" electrons")
 for i in range(len(combiScheme[1:])):
     plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][0], label=combiScheme.iloc[i+1]['probname']+" ions")
-    plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
+    if get_num_species() > 1:
+        plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
 plot_scheme_in_one.output_backend = "svg"
 export_svgs([plot_scheme_in_one], filename=combiSchemeMode[:-4] + "AllInOne.svg")
 output_notebook()
