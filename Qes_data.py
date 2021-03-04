@@ -31,7 +31,7 @@ def read_nrg_file(path):
         times = pd.read_table(path, sep="\s+",
                             header=None, skiprows=lambda x: x % 2 != 0)[0]
         names=["n0", "u0", "T_\parallel0", "T_\perp0", "Gamma_es0", "Gamma_em0", "Q_es0", "Q_em0"]
-        frame0 = pd.read_table(path, sep="\s+",
+        frame = pd.read_table(path, sep="\s+",
                             header=None, names=names,
                             skiprows=lambda x: x % 2 != 1)
     else:
@@ -336,7 +336,7 @@ class Qes_data:
         #output = output.stdout.read().decode("utf-8") #TODO this also returns the gnuplot window
         #print(output)
         output = "run 0, spec 0: mean(<Q_{es}>)=0.782097 +/- 0.139969 (stddev)"
-        for spec in [0,1]:
+        for spec in range(get_num_species()):
             expression = r'spec\s'+str(spec)+r':\smean\(<Q_\{es\}>\)=(.*)\s\+'
             pattern = re.compile(expression)
             match = pattern.search(output)
@@ -367,7 +367,7 @@ class Qes_data:
             time_error = self.get_time_error_csv(self.level_vector)
         else:
             time_error = get_time_error(self.frame)
-        for species in [0,1]:
+        for species in range(get_num_species()):
             nwin = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
             print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
         return time_error
