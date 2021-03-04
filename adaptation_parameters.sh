@@ -8,6 +8,8 @@
 export ADAPTATION_GENE3D_PATH="/hppfs/work/pn34mi/di68xux2/myGene3d/"
 export ADAPTATION_PROB_PATH="/hppfs/scratch/02/di39qun2/gene3d-flw-simulations/"
 
+# specify the number of species (currently only 0 for adiabatic electrons and 1 for kinetic electrons allowed)
+export ADAPTATION_NUMBER_OF_SPECIES="2"
 # the parameter file template contains placeholders:
 # `$n_procs_x`, `$n_procs_y`, `$n_procs_z`, `$n_procs_v`, `$n_procs_w`, and `$n_procs_s` for the parallelizations
 # `$nx0`, `$ny0`, `$nz0`, `$nv0`, and `$nw0` for the discretizations

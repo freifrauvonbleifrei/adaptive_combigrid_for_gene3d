@@ -12,17 +12,30 @@ import autocorr_pydiag
 import autocorr_johannes
 import sim_launcher
 
+def get_num_species():
+    return int(os.environ.get('ADAPTATION_NUMBER_OF_SPECIES'))
+
 def read_nrg_file(path):
-    times = pd.read_table(path, sep="\s+",
-                          header=None, skiprows=lambda x: x % 3 != 0)[0]
-    names=["n", "u", "T_\parallel", "T_\perp", "Gamma_es", "Gamma_em", "Q_es", "Q_em"]
-    frame0 = pd.read_table(path, sep="\s+",
-                          header=None, names=names,
-                          skiprows=lambda x: x % 3 != 1)
-    frame1 = pd.read_table(path, sep="\s+",
-                          header=None, names=names,
-                          skiprows=lambda x: x % 3 != 2)
-    frame = frame0.join(frame1, lsuffix='0', rsuffix='1')
+    if get_num_species() == 2:
+        times = pd.read_table(path, sep="\s+",
+                            header=None, skiprows=lambda x: x % 3 != 0)[0]
+        names=["n", "u", "T_\parallel", "T_\perp", "Gamma_es", "Gamma_em", "Q_es", "Q_em"]
+        frame0 = pd.read_table(path, sep="\s+",
+                            header=None, names=names,
+                            skiprows=lambda x: x % 3 != 1)
+        frame1 = pd.read_table(path, sep="\s+",
+                            header=None, names=names,
+                            skiprows=lambda x: x % 3 != 2)
+        frame = frame0.join(frame1, lsuffix='0', rsuffix='1')
+    elif get_num_species() == 1:
+        times = pd.read_table(path, sep="\s+",
+                            header=None, skiprows=lambda x: x % 2 != 0)[0]
+        names=["n0", "u0", "T_\parallel0", "T_\perp0", "Gamma_es0", "Gamma_em0", "Q_es0", "Q_em0"]
+        frame0 = pd.read_table(path, sep="\s+",
+                            header=None, names=names,
+                            skiprows=lambda x: x % 2 != 1)
+    else:
+        raise NotImplementedError
     frame["time"] = times
     return frame
 
@@ -44,7 +57,7 @@ def file_list_to_data_frame(filelist):
 
 
 def get_in_sim_time_per_timestep(frame):
-    # in the nrg file, every entry stands for 100 time steps
+    # in the nrg file, every entry stands for 100 time steps #TODO read the actual nrg spacing from parameters template
     num_timesteps = 100 * len(frame['time'])
     in_sim_time = frame['time'].iloc[-1] - frame['time'].iloc[0]
     return in_sim_time / num_timesteps
@@ -78,24 +91,25 @@ def get_cost_per_time(gene_last_output_file, frame):
 
 def get_autocorrelation_time(frame):
     assert frame['time'].is_monotonic
-    t_p = [0., 0.]
-    t_j = [0., 0.]
-    for species in [0,1]:
+    t_p = [0.] * get_num_species()
+    t_j = [0.] * get_num_species()
+    for species in range(get_num_species()):
         t_j[species], _, _, _ = autocorr_johannes.get_autocorr_time(
             frame['time'].copy().values, frame['Q_es'+str(species)].copy().values)
         t_p[species] = autocorr_pydiag.autocorrtime_1d(
             frame["Q_es"+str(species)].copy(), frame['time'].copy())
         relative = t_j[species]/t_p[species]
         if relative > 1.11 or relative < 0.9:
-            print("autocorrelations :" + str(t_j) + " and " + str(t_p))
+            print("autocorrelations :" + str(t_j) + " and " + str(t_p) + \
+                " -- there is something weird going on potentially")
     return t_p
 
 
 def get_time_error(frame, printOutput=False, autocorr_time=None):
     # if not autocorr_time:
     #    autocorr_time = get_autocorrelation_time(frame)
-    serror = [0., 0.]
-    for species in [0,1]:
+    serror = [0.] * get_num_species()
+    for species in range(get_num_species()):
         _, serror[species], nwin = autocorr_johannes.get_mean_error(frame['time'].copy().values, 
             frame['Q_es'+str(species)].copy().values, printOutput=printOutput)
     # Q_em is always 0 in our examples
@@ -130,16 +144,18 @@ class Qes_data:
         for dim in range(len(self.level_vector)):
             d[lkeys[dim]] = int(self.level_vector[dim])
         d['qes0'] = qes[0]
-        d['qes1'] = qes[1]
         d['qes_from'] = qes_from
         d['qes_to'] = qes_to
         d['cost_per_time'] = cost_per_time
         d['time_error0'] = np.nan if time_error is None else time_error[0]
-        d['time_error1'] = np.nan if time_error is None else time_error[1]
         d['autocorrelation_time0'] = np.nan if autocorrelation_time is None else autocorrelation_time[0]
-        d['autocorrelation_time1'] = np.nan if autocorrelation_time is None else autocorrelation_time[1]
         d['delta0'] = np.nan if delta is None else float(delta[0])
-        d['delta1'] = np.nan if delta is None else float(delta[1])
+        if get_num_species() == 2:
+            d['qes1'] = qes[1]
+            d['time_error1'] = np.nan if time_error is None else time_error[1]
+            d['autocorrelation_time1'] = np.nan if autocorrelation_time is None else autocorrelation_time[1]
+            d['delta1'] = np.nan if delta is None else float(delta[1])
+
         new_index = geometry + sim_launcher.l_vec_to_string(self.level_vector)
         #print(current_results.loc[new_index])
         current_results.loc[new_index]=d
@@ -150,7 +166,7 @@ class Qes_data:
         current_results.to_csv(self.results_csv)
 
     def set_delta_to_csv(self, delta, geometry=''):
-        return self.set_csv(delta)        
+        return self.set_csv(delta)
 
     def get_from_csv(self, level_vector):
         current_results = pd.read_csv(self.results_csv, index_col=0)
@@ -205,6 +221,7 @@ class Qes_data:
         return self.frame
 
     def get_flux(self, level_vector, interpolate=False, interpolate_onto_number_of_points=1000):
+        raise NotImplementedError("This was not reworked for em simulations!")
         probname = sim_launcher.l_vec_to_string(level_vector) 
         flux_filename = './flux_diags/flux_profile_ions_' + str(probname) + '.h5'
 
@@ -241,6 +258,7 @@ class Qes_data:
         return flux, x_a
 
     def get_bin_averaged_flux(self, level_vector, number_of_bins=2, interpolate=False):
+        raise NotImplementedError("This was not reworked for em simulations!")
         try:
             flux, x_a = self.get_flux(level_vector, interpolate)
         except OSError:
@@ -272,7 +290,10 @@ class Qes_data:
         if self.gene_path is None:
             result = self.get_from_csv()
             if result is not None:
-                result = (result['qes0'], result['qes1'])
+                if get_num_species() == 2:
+                    result = (result['qes0'], result['qes1'])
+                elif get_num_species() == 1:
+                    result = (result['qes0'])
         else:
             self.frame = self.get_frame()
             if up_to_time:
@@ -292,8 +313,8 @@ class Qes_data:
                     #        " and deviation " + str(self.frame.time.diff().std())
                     pass
                 #result = self.frame['Q_es'].mean()
-                result = [0., 0.]
-                for species in [0,1]:
+                result = [0.] * get_num_species()
+                for species in range(get_num_species()):
                     result[species] = autocorr_johannes.get_mean(
                         self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
                 #cost_per_time=get_cost_per_time(self.get_last_output_file(), self.frame)
@@ -346,14 +367,14 @@ class Qes_data:
             time_error = self.get_time_error_csv(self.level_vector)
         else:
             time_error = get_time_error(self.frame)
-        #for species in [0,1]:
-        #    nwin = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
-        #    print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
+        for species in [0,1]:
+            nwin = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
+            print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
         return time_error
 
     def how_many_nwin_run(self):
-        nwin = [0, 0]
-        for species in [0,1]:
+        nwin = [0] * get_num_species()
+        for species in range(get_num_species()):
             nwin[species] = autocorr_johannes.get_number_of_autocorrelation_windows(self.frame['time'].copy().values, self.frame['Q_es'+str(species)].copy().values)
             #print("NWIN " +str(nwin) + " time/autocorrelation_time " + str(self.how_long_run()/ self.get_autocorrelation_time(species)))
         return min(nwin)

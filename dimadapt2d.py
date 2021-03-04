@@ -33,6 +33,17 @@ def thingToStringList(thing):
     return l
 
 
+def get_results_string(result, sem):
+    if len(result) == 1:
+        return "[" + str(result[0])\
+                    + "] +- [" + str(sem[1]) + "]"\
+
+    if len(result) == 2:
+        return "[" + str(result[0]) \
+                    + "; "  + str(result[1])\
+                    + "] +- [" + str(sem[0]) \
+                    + "; "  + str(sem[1]) + "]"\
+
 class DimensionalAdaptation:
     def __init__(self, lmin, lmax, omega=1., \
                 prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'),\
@@ -43,6 +54,7 @@ class DimensionalAdaptation:
         self.output3d=output3d
         self.lmin=lmin
         self.lmax=lmax
+        self.num_species=Qes_data.get_num_species()
         self.minimum_time_length=float(os.environ.get('ADAPTATION_PARAM_MIN_RUNTIME'))
         #self.minimum_time_length=500
         self.termination_criterion_sem_factor=float(os.environ.get('ADAPTATION_PARAM_TERMINATION_CRITERION_SEM_FACTOR'))
@@ -56,57 +68,73 @@ class DimensionalAdaptation:
         weightedRelevanceCalculator=pysgpp.WeightedRelevanceCalculator(omega)
         #TODO allow passing relevance generator with own omega -- for now setting omega to 1. in sgpp manually
         assert(omega == 1.)
-        self.adaptiveGeneratorElectrons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         self.adaptiveGeneratorIons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
+        if self.num_species > 1:
+            self.adaptiveGeneratorElectrons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         
         # set start results
         qes_data = Qes_data.Qes_data(lmin)
         result = qes_data.get_result()
         sgppActiveLevelVector=pysgpp.LevelVector(lmin)
-        self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
         self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
+        if self.num_species > 1:
+            self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
         
         #same for SEMs
         sem = qes_data.get_time_error()
-        self.adaptiveSEMElectrons = \
-            pysgpp.AdaptiveCombinationGridGenerator.fromFunctionPointer(levels, \
-                                        pysgpp.DoubleVector(1,sem[1]), pysgpp.squaredSummation_cb)
         self.adaptiveSEMIons = pysgpp.AdaptiveCombinationGridGenerator.fromFunctionPointer(levels, \
                                         pysgpp.DoubleVector(1,sem[0]), pysgpp.squaredSummation_cb)
-        delta = [self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector),
-                self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
+        delta = [self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
+        if self.num_species > 1:
+            self.adaptiveSEMElectrons = \
+                pysgpp.AdaptiveCombinationGridGenerator.fromFunctionPointer(levels, \
+                                            pysgpp.DoubleVector(1,sem[1]), pysgpp.squaredSummation_cb)
+            delta.append(self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))
         qes_data.set_delta_to_csv(delta)
 
-        print("starting with: " + str(self.adaptiveGeneratorElectrons.getCurrentResult()) \
-                       + "; "  + str(self.adaptiveGeneratorIons.getCurrentResult())\
-                      + "] +- [" + str(self.adaptiveSEMElectrons.getCurrentResult()) \
-                      + "; "  + str(self.adaptiveSEMIons.getCurrentResult()) + "]"\
-        )
+        print("starting with: " + self.get_results_string())
 
         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
             print("please run the initial simulation longer!")
             assert(False)
 
+    def get_results_string(self):
+        if self.num_species == 1:
+            return "[" + str(self.adaptiveGeneratorIons.getCurrentResult())\
+                      + "] +- [" + str(self.adaptiveSEMIons.getCurrentResult()) + "]"\
+
+        if self.num_species == 2:
+            return "[" + str(self.adaptiveGeneratorIons.getCurrentResult()) \
+                       + "; "  + str(self.adaptiveGeneratorElectrons.getCurrentResult())\
+                      + "] +- [" + str(self.adaptiveSEMIons.getCurrentResult()) \
+                      + "; "  + str(self.adaptiveSEMElectrons.getCurrentResult()) + "]"\
+
+    def adapt_for_all(self, l_adapt):
+        self.adaptiveGeneratorIons.adaptLevel(l_adapt)
+        self.adaptiveSEMIons.adaptLevel(l_adapt)
+        if self.num_species == 2:
+            self.adaptiveGeneratorElectrons.adaptLevel(l_adapt)
+            self.adaptiveSEMElectrons.adaptLevel(l_adapt)
 
     def run_dimadapt_algorithm(self, numGrids=10):
         absAdaptedDelta = 100000. # kinds.default_float_kind.MAX
         totalSEM=-1.
         waitingForResults=False
         waitingForNumberOfResults=0
-        while (len(self.adaptiveGeneratorElectrons.getOldSet()) < numGrids) and \
+        while (len(self.adaptiveGeneratorIons.getOldSet()) < numGrids) and \
                 (totalSEM < self.termination_criterion_sem_factor* absAdaptedDelta) and \
                 waitingForNumberOfResults < 5 and \
-                ~(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0):
+                ~(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True
             waitingForNumberOfResults=0            
 
             # iterate the whole active set
-            for activeLevelVector in self.adaptiveGeneratorElectrons.getActiveSet():
+            for activeLevelVector in self.adaptiveGeneratorIons.getActiveSet():
                 #print(activeLevelVector, waitingForNumberOfResults)
-                #print(not (self.adaptiveGeneratorElectrons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))))
+                #print(not (self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))))
                 # store QoI information if we have not done it already 
                 
-                if (not self.adaptiveGeneratorElectrons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
+                if (not self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
                     print(activeLevelVector, waitingForNumberOfResults)
                     qes_data = Qes_data.Qes_data(activeLevelVector)
                     result = qes_data.get_result()
@@ -114,19 +142,17 @@ class DimensionalAdaptation:
                     if result:
                         waitingForResults=False
                         sgppActiveLevelVector=pysgpp.LevelVector(activeLevelVector)
-                        # store the results in the adaptive generators
-                        self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
-                        self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
                         sem=qes_data.get_time_error()
-                        self.adaptiveSEMElectrons.setQoIInformation(sgppActiveLevelVector, sem[1])
+                        assert(len(sem) == self.num_species)
+                        # store the results in the adaptive generators
+                        self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
                         self.adaptiveSEMIons.setQoIInformation(sgppActiveLevelVector, sem[0])
-                        print("has values: " + str(result[0]) \
-                            + "; "  + str(result[1])\
-                            + "] +- [" + str(sem[0]) \
-                            + "; "  + str(sem[1]) + "]"\
-                        )
-                        delta = [self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector),
-                                self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
+                        delta = [self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
+                        if self.num_species > 1:
+                            self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
+                            self.adaptiveSEMElectrons.setQoIInformation(sgppActiveLevelVector, sem[1])
+                            delta.append(8)#self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))                              ]
+                        print("has values: " + get_results_string(result, sem))
                         qes_data.set_delta_to_csv(delta)
                         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
                         #prolong simulation
@@ -141,7 +167,7 @@ class DimensionalAdaptation:
                                 if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
                                     # restart the simulation
                                     print("sim_launcher: restart because of SEM "+str(activeLevelVector))
-                                    sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector, qes_data.how_long_run() + self.minimum_time_length)
+                                    sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector, qes_data.how_long_run() + 2 * self.minimum_time_length)
 
                     else:
                         # start or prolong simulations
@@ -167,21 +193,23 @@ class DimensionalAdaptation:
                     waitingForResults=False
             if not waitingForResults:
                 # adapt to the next best level: the one with the most relative change
-                currentElectrons = self.adaptiveGeneratorElectrons.getCurrentResult()
                 currentIons = self.adaptiveGeneratorIons.getCurrentResult()
+                if self.num_species > 1:
+                    currentElectrons = self.adaptiveGeneratorElectrons.getCurrentResult()
                 
                 # identify the next most relevant levels
-                levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
                 levelIons = self.adaptiveGeneratorIons.getMostRelevant()
-                deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)
-                deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)                
+                deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)
+                if self.num_species > 1:
+                    levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
+                    deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)           
                 
                 #print(list(i for i in levelElectrons),list(i for i in levelIons))
                 #print(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet())
                 #print(self.adaptiveGeneratorIons.getRelevanceOfActiveSet())
 
                 # compare relative differences of the different levels
-                if abs(deltaElectrons / currentElectrons) > abs(deltaIons / currentIons):
+                if self.num_species == 2 and abs(deltaElectrons / currentElectrons) > abs(deltaIons / currentIons):
                     # choose which one based on the relative change to the current value
                     l_adapt=levelElectrons
                     adaptedByElectrons=True
@@ -189,22 +217,15 @@ class DimensionalAdaptation:
                 else:
                     l_adapt=levelIons
                     adaptedByElectrons=False
-                    print("adapted by ions " + str(deltaIons) + " vs " + str(deltaElectrons))
+                    #print("adapted by ions " + str(deltaIons) + " vs " + str(deltaElectrons))
 
                 # adapt this level for all generators
-                self.adaptiveGeneratorElectrons.adaptLevel(l_adapt)
-                self.adaptiveGeneratorIons.adaptLevel(l_adapt)
-                self.adaptiveSEMElectrons.adaptLevel(l_adapt)
-                self.adaptiveSEMIons.adaptLevel(l_adapt)
+                self.adapt_for_all(l_adapt)
 
                 # print output so we see what happened
                 try:
-                    print("adapted (" + thingToString(l_adapt) + "): [" \
-                          + str(self.adaptiveGeneratorElectrons.getCurrentResult()) \
-                          + "; "  + str(self.adaptiveGeneratorIons.getCurrentResult()) \
-                          + "] +- [" + str(self.adaptiveSEMElectrons.getCurrentResult()) \
-                          + "; "  + str(self.adaptiveSEMIons.getCurrentResult()) + "]"\
-                    )
+                    print("adapted (" + thingToString(l_adapt) + "): " \
+                          + self.get_results_string() )
                     #print(len(self.adaptiveGeneratorElectrons.getOldSet()), \
                     #      len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()))
         
@@ -220,33 +241,29 @@ class DimensionalAdaptation:
                     # means that smaller-level results are missing
                     pass
                     
-        print(len(self.adaptiveGeneratorElectrons.getOldSet()) < numGrids, (totalSEM < absAdaptedDelta), \
+        print(len(self.adaptiveGeneratorIons.getOldSet()) < numGrids, (totalSEM < absAdaptedDelta), \
                 not waitingForResults, waitingForNumberOfResults < 5, \
-                not(len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0))
-        if(len(self.adaptiveGeneratorElectrons.getOldSet()) > numGrids):
+                not(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0))
+        if(len(self.adaptiveGeneratorIons.getOldSet()) > numGrids):
             print("Terminated because desired number of grids was reached ("+str(numGrids)+"): we are done.")
         if (totalSEM > self.termination_criterion_sem_factor * absAdaptedDelta):
             print("Terminated because stopping criterion was reached (SEM of "+str(totalSEM)+\
                     " is higher than delta of "+str(absAdaptedDelta)+\
                     "): maybe the adaptation continues when simulations have run longer -- check your job queue.")
-        if (waitingForResults or waitingForNumberOfResults > 4 or (len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()) == 0)):
+        if (waitingForResults or waitingForNumberOfResults > 4 or (len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0)):
             print("Terminated because waiting for results of simulation runs: we are not done yet.")
 
         # print output 
         try:
-            print("final result: " + str(self.adaptiveGeneratorElectrons.getCurrentResult()) \
-                          + "; "  + str(self.adaptiveGeneratorIons.getCurrentResult())\
-                          + "] +- [" + str(self.adaptiveSEMElectrons.getCurrentResult()) \
-                          + "; "  + str(self.adaptiveSEMIons.getCurrentResult()) + "]"\
-            )
+            print("final result: " + self.get_results_string())
         except RuntimeError:
             # means that smaller-level results are missing
             pass
         
-        oldSet = self.adaptiveGeneratorElectrons.getOldSet()
+        oldSet = self.adaptiveGeneratorIons.getOldSet()
         print("adapted levels: " + thingToString(oldSet))
-        self.adaptiveGeneratorElectrons.adaptAllKnown()
-        activeAndOldSet = self.adaptiveGeneratorElectrons.getOldSet()
+        self.adaptiveGeneratorIons.adaptAllKnown()
+        activeAndOldSet = self.adaptiveGeneratorIons.getOldSet()
 
         oldCoefficients = pysgpp.getStandardCoefficientsFromLevelSet(oldSet)
         allCoefficients = pysgpp.getStandardCoefficientsFromLevelSet(activeAndOldSet)
@@ -262,10 +279,11 @@ class DimensionalAdaptation:
                 combinations = list(chain.from_iterable(combinations(s, r) for r in range(len(s)+1)))
                 combinations = [c for c in list(combinations) if len(c) == 3]
                 for c in combinations:
-                    pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveGeneratorElectrons, c, "e_"+str(c)+".pdf")
                     pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveGeneratorIons, c, "i_"+str(c)+".pdf")
-                    pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveSEMElectrons, c, "ee_"+str(c)+".pdf")
                     pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveSEMIons, c, "ei_"+str(c)+".pdf")
+                    if self.num_species > 1:
+                        pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveGeneratorElectrons, c, "e_"+str(c)+".pdf")
+                        pysgpp.extensions.combigrid.plotDeltas3d.plotDeltas3D(self.adaptiveSEMElectrons, c, "ee_"+str(c)+".pdf")
             except Exception as e:
                 print(e)
                 pass
