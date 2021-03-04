@@ -36,7 +36,7 @@ def thingToStringList(thing):
 def get_results_string(result, sem):
     if len(result) == 1:
         return "[" + str(result[0])\
-                    + "] +- [" + str(sem[1]) + "]"\
+                    + "] +- [" + str(sem[0]) + "]"\
 
     if len(result) == 2:
         return "[" + str(result[0]) \
