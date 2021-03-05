@@ -123,7 +123,7 @@ class DimensionalAdaptation:
         waitingForNumberOfResults=0
         while (len(self.adaptiveGeneratorIons.getOldSet()) < numGrids) and \
                 (totalSEM < self.termination_criterion_sem_factor* absAdaptedDelta) and \
-                waitingForNumberOfResults < 5 and \
+                waitingForNumberOfResults < 10 and \
                 ~(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True
             waitingForNumberOfResults=0            
@@ -242,7 +242,7 @@ class DimensionalAdaptation:
                     pass
                     
         print(len(self.adaptiveGeneratorIons.getOldSet()) < numGrids, (totalSEM < absAdaptedDelta), \
-                not waitingForResults, waitingForNumberOfResults < 5, \
+                not waitingForResults, waitingForNumberOfResults < 10, \
                 not(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0))
         if(len(self.adaptiveGeneratorIons.getOldSet()) > numGrids):
             print("Terminated because desired number of grids was reached ("+str(numGrids)+"): we are done.")
