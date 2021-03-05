@@ -151,7 +151,7 @@ class DimensionalAdaptation:
                         if self.num_species > 1:
                             self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
                             self.adaptiveSEMElectrons.setQoIInformation(sgppActiveLevelVector, sem[1])
-                            delta.append(self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))                              ]
+                            delta.append(self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))
                         print("has values: " + get_results_string(result, sem))
                         qes_data.set_delta_to_csv(delta)
                         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
