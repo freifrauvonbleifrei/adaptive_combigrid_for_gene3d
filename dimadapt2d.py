@@ -161,7 +161,7 @@ class DimensionalAdaptation:
                                     # restart the simulation
                                     print("sim_launcher: restart "+str(activeLevelVector))
                                     sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector)
-                        elif (sem[0] > 0.07*result[0]) or (sem[1] > 0.07*result[1]):
+                        elif any([sem[i] > 0.1 * result[i] for i in range(len(sem))]):
                         #prolong simulation
                             if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
                                 if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
