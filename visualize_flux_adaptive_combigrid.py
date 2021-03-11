@@ -123,7 +123,7 @@ def filenames_to_fluxes(flux_filenames, resample=True):
                     d = {'Q_es': np.array(Q_es), 'x_a': np.array(x_a)}
                     fluxes[probname][species] = pd.DataFrame(data=d)
             except Exception as e:
-                print("error reading filename: " + flux_filenames[i][species])
+                print("error reading filename: " + flux_filenames[i][species] + " " + str(flux_filenames) + " " + str(i) + " " + str(species))
                 raise
     if resample:
         x_a_range = [fluxes[probname][0]['x_a'].min(), fluxes[probname][0]['x_a'].max()]
