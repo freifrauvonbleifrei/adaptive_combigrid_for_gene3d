@@ -94,7 +94,7 @@ print("Running the scheme " + combiSchemeMode + " took approximately " + str(get
 # In[6]:
 
 # extract the flux profiles
-subprocess.run("./extract_flux_profiles.sh", shell=True)
+subprocess.run("./extract_flux_profile.sh", shell=True)
 
 def get_filenames(probname):
     if get_num_species() == 2:
@@ -113,14 +113,18 @@ def filenames_to_fluxes(flux_filenames, resample=True):
         probname = combiScheme['probname'][i]
         fluxes[probname]={}
         for species in range(get_num_species()):
-            with h5py.File(flux_filenames[i][species],  "r") as f:
-#                 print(flux_filenames[i][species])
-                for item in f.attrs.keys():
-                    print(item + ":", f.attrs[item])    
-                Q_es = f['Q_es_ions'  if species == 0 else 'Q_es_electrons'] 
-                x_a = f['x_a']
-                d = {'Q_es': np.array(Q_es), 'x_a': np.array(x_a)}
-                fluxes[probname][species] = pd.DataFrame(data=d)
+            try:
+                with h5py.File(flux_filenames[i][species],  "r") as f:
+    #                 print(flux_filenames[i][species])
+                    for item in f.attrs.keys():
+                        print(item + ":", f.attrs[item])    
+                    Q_es = f['Q_es_ions'  if species == 0 else 'Q_es_electrons'] 
+                    x_a = f['x_a']
+                    d = {'Q_es': np.array(Q_es), 'x_a': np.array(x_a)}
+                    fluxes[probname][species] = pd.DataFrame(data=d)
+            except Exception as e:
+                print("error reading filename: " + flux_filenames[i][species])
+                raise
     if resample:
         x_a_range = [fluxes[probname][0]['x_a'].min(), fluxes[probname][0]['x_a'].max()]
         Xresampled = np.linspace(x_a_range[0],x_a_range[1],denominator_spacings)
