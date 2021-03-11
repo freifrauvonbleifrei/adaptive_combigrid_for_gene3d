@@ -97,7 +97,10 @@ print("Running the scheme " + combiSchemeMode + " took approximately " + str(get
 subprocess.run("./extract_flux_profiles.sh", shell=True)
 
 def get_filenames(probname):
-    fnames = [('./flux_diags/flux_profile_ions_'+ str(x) +'.h5', './flux_diags/flux_profile_electrons_'+ str(x) +'.h5') for x in probname]
+    if get_num_species() == 2:
+        fnames = [('./flux_diags/flux_profile_ions_'+ str(x) +'.h5', './flux_diags/flux_profile_electrons_'+ str(x) +'.h5') for x in probname]
+    elif get_num_species() == 1:
+        fnames = [('./flux_diags/flux_profile_ions_'+ str(x) +'.h5') for x in probname]
     return fnames
 filenames = get_filenames(combiScheme['probname'])
 
@@ -109,7 +112,7 @@ def filenames_to_fluxes(flux_filenames, resample=True):
     for i in range(len(combiScheme['probname'])):
         probname = combiScheme['probname'][i]
         fluxes[probname]={}
-        for species in [0,1]:
+        for species in range(get_num_species()):
             with h5py.File(flux_filenames[i][species],  "r") as f:
 #                 print(flux_filenames[i][species])
                 for item in f.attrs.keys():
@@ -125,7 +128,7 @@ def filenames_to_fluxes(flux_filenames, resample=True):
         # cf. https://stackoverflow.com/questions/10464738/interpolation-on-dataframe-in-pandas
         for i in range(len(fluxes)):
             probname = combiScheme['probname'][i]
-            for species in [0,1]:
+            for species in range(get_num_species()):
                 modflux = fluxes[probname][species]
                 modflux.set_index('x_a',inplace =True, drop=False)
 
@@ -258,7 +261,7 @@ multiplyWithCoefficient = True
 for i in range(len(fluxes)):
     probname = combiScheme.iloc[i]['probname']
     fluxes_multiplied_with_coefficient[probname] = {}
-    for species in [0,1]:
+    for species in range(get_num_species()):
         fluxes_multiplied_with_coefficient[probname][species] = fluxes[probname][species].copy()
         if multiplyWithCoefficient:
             fluxes_multiplied_with_coefficient[probname][species][QoI] = fluxes[probname][species][QoI] * combiScheme.iloc[i]['coefficient']
