@@ -8,6 +8,7 @@ import dimadapt2d
 print("Running with adaptation only to target resolution")
 # cf. https://stackoverflow.com/questions/48066106/converting-vector-looking-string-into-vector-values-python
 lmin=[int(i.strip()) for i in environ.get('ADAPTATION_MINIMUM_LEVEL')[1:-1].split(",")]
-adapt = dimadapt2d.DimensionalAdaptation(lmin, [10,10,10,10,6], output3d=True)
+lmax=[int(i.strip()) for i in environ.get('ADAPTATION_MAXIMUM_LEVEL')[1:-1].split(",")]
+adapt = dimadapt2d.DimensionalAdaptation(lmin, lmax, output3d=True)
 
 adapt.run_dimadapt_algorithm(100)
