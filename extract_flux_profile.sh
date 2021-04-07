@@ -4,6 +4,8 @@
 
 PROB_PREPATH=${ADAPTATION_PROB_PATH}
 DIAG_PATH="./gene-diag"
+export PYTHONPATH=$DIAG_PATH/GENE_gui_python:$PYTHONPATH
+
 DIAGNOSTICS=DiagFluxesgene3d
 OUTDIR='./flux_diags/'
 mkdir -p $OUTDIR
@@ -21,9 +23,10 @@ for PROBNAME in $PROB_PREPATH/prob_*; do
         #       endtime=$(tail -n 4 $f |head -n 1)
         #    fi
         #done
+
         # only re-run the diagnostic if the nrg.dat file is newer than the existing flux profile output
         if [ ! -e $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] || [ $PROB_PREPATH/$PROBNAME/out/nrg.dat -nt $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] ; then
-            #python3 ./diag-python/GENE_gui_python/gene_cl.py -i ./$PROBNAME/out -o $OUTDIR --starttime=800.0 --endtime=$endtime -e '_1' '_2' '_3' '_4' '_5' '_6' '_7' '_8' '_9' '_10' '_11' '_12' '_13' '_14' '_15' '_16' '_17' '_18' '_19' '_20' '_21' '_22' '_23' '.dat'
+            
             NRGFILESLIST=""
             # https://unix.stackexchange.com/questions/239772/bash-iterate-file-list-except-when-empty
             shopt -s nullglob
@@ -32,14 +35,31 @@ for PROBNAME in $PROB_PREPATH/prob_*; do
                 NRGFILENUM=$(basename $NRGFILENUM)
                 NRGSUBSTRING=$(echo $NRGFILENUM | cut -d'_' -f 2)
                 NRGFILESLIST+=" _${NRGSUBSTRING}"
+                #echo $NRGFILESLIST
             done
-            NRGFILESLIST+=" .dat"
-            #python3 ./diag-python/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=150.0 -d${DIAGNOSTICS} -e '_1' '_2' '_3' '_4' '_5' '_6' '_7' '_8' '_9' '_10' '_11' '_12' '_13' '_14' '_15' '_16' '_17' '_18' '_19' '_20' '_21' '_22' '_23' #'.dat'
-            python3 ${DIAG_PATH}/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=150.0 -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+            if [ -e $PROB_PREPATH/$PROBNAME/out/nrg.dat ] ; then
+                NRGFILESLIST+=" .dat"
+            fi
+            
+            #python3 ${DIAG_PATH}/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+            python3 ./additional-diagnostics/additional_diagnostics.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
 
-            mv $OUTDIR/flux_profile_ions_.h5 $OUTDIR/flux_profile_ions_$PROBNAME.h5
+            #mv $OUTDIR/flux_profile_ions_.h5 $OUTDIR/flux_profile_ions__$PROBNAME.h5
+            mv $OUTDIR/flux_profile_ions.h5 $OUTDIR/flux_profile_ions_$PROBNAME.h5
+            mv $OUTDIR/flux_spectra_Gem_ions.h5 $OUTDIR/flux_spectra_Gem_ions_$PROBNAME.h5
+            mv $OUTDIR/flux_spectra_Ges_ions.h5 $OUTDIR/flux_spectra_Ges_ions_$PROBNAME.h5
+            mv $OUTDIR/flux_spectra_Qem_ions.h5 $OUTDIR/flux_spectra_Qem_ions_$PROBNAME.h5
+            mv $OUTDIR/flux_spectra_Qes_ions.h5 $OUTDIR/flux_spectra_Qes_ions_$PROBNAME.h5
+            mv $OUTDIR/profile_ions.h5 $OUTDIR/profile_ions_$PROBNAME.h5
             if [ ${ADAPTATION_NUMBER_OF_SPECIES} = "2" ] ; then
-                mv $OUTDIR/flux_profile_electrons_.h5 $OUTDIR/flux_profile_electrons_$PROBNAME.h5
+                #mv $OUTDIR/flux_profile_electrons_.h5 $OUTDIR/flux_profile_electrons__$PROBNAME.h5
+                mv $OUTDIR/flux_profile_electrons.h5 $OUTDIR/flux_profile_electrons_$PROBNAME.h5
+                mv $OUTDIR/flux_spectra_Gem_electrons.h5 $OUTDIR/flux_spectra_Gem_electrons_$PROBNAME.h5
+                mv $OUTDIR/flux_spectra_Ges_electrons.h5 $OUTDIR/flux_spectra_Ges_electrons_$PROBNAME.h5
+                mv $OUTDIR/flux_spectra_Qem_electrons.h5 $OUTDIR/flux_spectra_Qem_electrons_$PROBNAME.h5
+                mv $OUTDIR/flux_spectra_Qes_electrons.h5 $OUTDIR/flux_spectra_Qes_electrons_$PROBNAME.h5
+                mv $OUTDIR/profile_electrons.h5 $OUTDIR/profile_electrons_$PROBNAME.h5
+
             fi
         fi
         RETURNCODE=$?
