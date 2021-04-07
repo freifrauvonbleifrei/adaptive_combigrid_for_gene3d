@@ -11,7 +11,7 @@ import pandas as pd
 from bokeh.layouts import gridplot, column, row
 from bokeh.models import Legend, Band, ColumnDataSource, Span, RangeSlider, Range, Panel, Plot, Range1d, Circle, LinearColorMapper, ColorBar, HoverTool
 from bokeh.plotting import figure, show, output_notebook
-from bokeh.io import export_svgs
+from bokeh.io import export_svgs, export_png
 
 from Qes_data import get_num_species
 
@@ -36,7 +36,7 @@ QoI = "Q_es"
 
 prob_prefix = ''
 combiSchemeMode='oldSet.csv'
-combiSchemeMode='allSet.csv'
+#combiSchemeMode='allSet.csv'
 if (len(sys.argv) > 1):
     combiSchemeMode = sys.argv[1]
 
@@ -251,7 +251,8 @@ plot_combi = get_plot(combi_flux[0], label="combi ions" ,display_legend=True, wi
 if get_num_species() > 1:
     plot_combi = add_to_plot(plot_combi, combi_flux[1], label="combi electrons", display_legend=True)
 plot_combi.output_backend = "svg"
-export_svgs([plot_combi], filename=combiSchemeMode[:-4] + "Combi.svg")
+# export_svgs([plot_combi], filename=combiSchemeMode[:-4] + "Combi.svg")
+export_png(plot_combi, filename=combiSchemeMode[:-4] + "Combi.png")
 output_notebook()
 show(plot_combi)
 
@@ -287,7 +288,8 @@ for i in range(len(combiScheme[1:])):
 #DONE alle verfügbaren Gitter einbeziehen
 #TODO adaption durch l2-unterschied im Flux (oder höhe oder lage des Maximums)
 plot_scheme_mult_in_one.output_backend = "svg"
-export_svgs([plot_scheme_mult_in_one], filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.svg")
+# export_svgs([plot_scheme_mult_in_one], filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.svg")
+export_png(plot_scheme_mult_in_one, filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.png")
 output_notebook()
 show(plot_scheme_mult_in_one)
 
@@ -303,7 +305,8 @@ for i in range(len(combiScheme[1:])):
     if get_num_species() > 1:
         plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
 plot_scheme_in_one.output_backend = "svg"
-export_svgs([plot_scheme_in_one], filename=combiSchemeMode[:-4] + "AllInOne.svg")
+# export_svgs([plot_scheme_in_one], filename=combiSchemeMode[:-4] + "AllInOne.svg")
+export_png(plot_scheme_in_one, filename=combiSchemeMode[:-4] + "AllInOne.png")
 output_notebook()
 show(plot_scheme_in_one)
 
