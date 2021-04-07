@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import pkg_resources
 
 import math
 import numpy as np
@@ -12,6 +13,7 @@ from bokeh.layouts import gridplot, column, row
 from bokeh.models import Legend, Band, ColumnDataSource, Span, RangeSlider, Range, Panel, Plot, Range1d, Circle, LinearColorMapper, ColorBar, HoverTool
 from bokeh.plotting import figure, show, output_notebook
 from bokeh.io import export_svgs, export_png
+bokeh_version = pkg_resources.get_distribution('bokeh').version
 
 from Qes_data import get_num_species
 
@@ -48,7 +50,7 @@ def get_combiScheme(prefix, mode=combiSchemeMode, dropzeros=True):
     assert(abs( combiScheme['coefficient'].sum() - 1) < 1e-6)
     return combiScheme
 
-combiScheme = get_combiScheme(prob_prefix, dropzeros=False)
+combiScheme = get_combiScheme(prob_prefix, dropzeros=True)
 
 lx_range = combiScheme['l_0'].copy().drop_duplicates().tolist()
 spacings = [2**lx -1 for lx in lx_range]
@@ -193,20 +195,16 @@ def get_figure(x, width=None, height=None):
     x_range = Range1d(start=x.min(), end=x.max())
     return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range)
 
-def get_plot_xy(x, y, color=None):
-    if not color:
-        color="navy"
-    plot = get_figure(x)
-    q = plot.line(x, y, color=color, alpha=0.5)
-    return plot
-
 def add_to_plot(plot, df, label=None, color=None, display_legend=False):
     if not color:
         color = next(colors)
     source = ColumnDataSource(df)
-    q = plot.line("x_a", QoI, color=color, source=source)
+    if bokeh_version > "2.":
+        q = plot.line("x_a", QoI, color=color, source=source, legend_label=label)
+    else:
+        q = plot.line("x_a", QoI, color=color, source=source)
     plot.add_tools(HoverTool(renderers=[q], tooltips=[("",label)]))
-    if display_legend:
+    if display_legend and bokeh_version < "2.":
         legend = Legend(items=[
             (label,   [q]),
         ], location=(0, -30))
@@ -251,7 +249,7 @@ plot_combi = get_plot(combi_flux[0], label="combi ions" ,display_legend=True, wi
 if get_num_species() > 1:
     plot_combi = add_to_plot(plot_combi, combi_flux[1], label="combi electrons", display_legend=True)
 plot_combi.output_backend = "svg"
-# export_svgs([plot_combi], filename=combiSchemeMode[:-4] + "Combi.svg")
+export_svgs([plot_combi], filename=combiSchemeMode[:-4] + "Combi.svg")
 export_png(plot_combi, filename=combiSchemeMode[:-4] + "Combi.png")
 output_notebook()
 show(plot_combi)
@@ -288,7 +286,7 @@ for i in range(len(combiScheme[1:])):
 #DONE alle verfügbaren Gitter einbeziehen
 #TODO adaption durch l2-unterschied im Flux (oder höhe oder lage des Maximums)
 plot_scheme_mult_in_one.output_backend = "svg"
-# export_svgs([plot_scheme_mult_in_one], filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.svg")
+export_svgs([plot_scheme_mult_in_one], filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.svg")
 export_png(plot_scheme_mult_in_one, filename=combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.png")
 output_notebook()
 show(plot_scheme_mult_in_one)
@@ -297,15 +295,15 @@ show(plot_scheme_mult_in_one)
 # In[13]:
 
 
-plot_scheme_in_one = get_plot(fluxes[combiScheme.iloc[0]['probname']][0],label=combiScheme.iloc[0]['probname']+" ions")
+plot_scheme_in_one = get_plot(fluxes[combiScheme.iloc[0]['probname']][0],label=combiScheme.iloc[0]['probname']+" ions", display_legend=True)
 if get_num_species() > 1:
-    plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[0]['probname']][1], label=combiScheme.iloc[0]['probname']+" electrons")
+    plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[0]['probname']][1], label=combiScheme.iloc[0]['probname']+" electrons", display_legend=True)
 for i in range(len(combiScheme[1:])):
     plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][0], label=combiScheme.iloc[i+1]['probname']+" ions")
     if get_num_species() > 1:
         plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
 plot_scheme_in_one.output_backend = "svg"
-# export_svgs([plot_scheme_in_one], filename=combiSchemeMode[:-4] + "AllInOne.svg")
+export_svgs([plot_scheme_in_one], filename=combiSchemeMode[:-4] + "AllInOne.svg")
 export_png(plot_scheme_in_one, filename=combiSchemeMode[:-4] + "AllInOne.png")
 output_notebook()
 show(plot_scheme_in_one)
