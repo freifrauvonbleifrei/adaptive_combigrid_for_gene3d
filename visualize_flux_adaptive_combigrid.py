@@ -209,7 +209,10 @@ for diagnostics_index in range(len(diagnostics_df)):
     # get profile plot
     def get_figure(x, width=None, height=None):
         x_range = Range1d(start=x.min(), end=x.max())
-        return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range)
+        if (diagnostics_df['x_axis_name'][diagnostics_index] == "ky"):
+            return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range, y_axis_type="log")#, x_axis_type="log") # why won't this work???
+        else:
+            return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range)
 
     def add_to_plot(plot, df, label=None, color=None, display_legend=False):
         if not color:
