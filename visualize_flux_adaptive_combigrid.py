@@ -60,10 +60,6 @@ for diagnostics_index in range(len(diagnostics_df)):
         return combiScheme
 
     combiScheme = get_combiScheme(prob_prefix, dropzeros=True)
-
-    lx_range = combiScheme['l_0'].copy().drop_duplicates().tolist()
-    spacings = [2**lx -1 for lx in lx_range]
-    denominator_spacings = 2047
     combiScheme
     # filenames
     # lx_range
@@ -140,8 +136,14 @@ for diagnostics_index in range(len(diagnostics_df)):
                     print("error reading filename: " + flux_filenames[i][species] + " " + str(flux_filenames) + " " + str(i) + " " + str(species))
                     raise e
         if resample:
-            x_a_range = [fluxes[probname][0]['x_a'].min(), fluxes[probname][0]['x_a'].max()]
-            Xresampled = np.linspace(x_a_range[0],x_a_range[1],denominator_spacings)
+            Xresampled = set()
+            for probname in fluxes:
+                x_coords_prob = fluxes[probname][0]['x_a']
+                Xresampled = Xresampled | set(x_coords_prob)
+            # if in spectral space, remove zero value:
+            if (diagnostics_df['x_axis_name'][diagnostics_index] == "ky"):
+                Xresampled.discard(0.)
+            Xresampled = sorted(Xresampled)
 
             # cf. https://stackoverflow.com/questions/10464738/interpolation-on-dataframe-in-pandas
             for i in range(len(fluxes)):
@@ -161,13 +163,15 @@ for diagnostics_index in range(len(diagnostics_df)):
                     #'from_derivatives': Refers to scipy.interpolate.BPoly.from_derivatives which replaces 'piecewise_polynomial' interpolation method in scipy 0.18.
 
             #         modflux = modflux.reindex(modflux.index.union(Xresampled)).interpolate('linear').loc[Xresampled]
-                    modflux = modflux.reindex(modflux.index.union(Xresampled)).interpolate('polynomial', order=5).loc[Xresampled]
+                    modflux = modflux.reindex(modflux.index.union(Xresampled)).interpolate('polynomial', order=1).loc[Xresampled]
                     modflux.reset_index(inplace=True, drop=True)
+                    modflux.fillna(0., inplace=True) # fill values at the ends with zeroes
                     fluxes[probname][species] = modflux
+
             return fluxes, Xresampled
         else:
             return fluxes
-        
+
     fluxes, Xresampled = filenames_to_fluxes(filenames)
     # fluxes = filenames_to_fluxes(filenames, False)
 
