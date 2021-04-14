@@ -36,7 +36,7 @@ def thingToStringList(thing):
 def get_results_string(result, sem):
     if len(result) == 1:
         return "[" + str(result[0])\
-                    + "] +- [" + str(sem[0]) + "]"\
+                    + "] +- [" + str(sem[1]) + "]"\
 
     if len(result) == 2:
         return "[" + str(result[0]) \
@@ -147,11 +147,13 @@ class DimensionalAdaptation:
                         # store the results in the adaptive generators
                         self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
                         self.adaptiveSEMIons.setQoIInformation(sgppActiveLevelVector, sem[0])
-                        delta = [self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)]
+                        deltaIons = self.adaptiveGeneratorIons.getDelta(sgppActiveLevelVector)
+                        delta = [deltaIons]
                         if self.num_species > 1:
                             self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
                             self.adaptiveSEMElectrons.setQoIInformation(sgppActiveLevelVector, sem[1])
-                            delta.append(self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))
+                            deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector)
+                            delta = [deltaIons, deltaElectrons]
                         print("has values: " + get_results_string(result, sem))
                         qes_data.set_delta_to_csv(delta)
                         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
@@ -193,22 +195,50 @@ class DimensionalAdaptation:
                     waitingForResults=False
             if not waitingForResults:
                 # adapt to the next best level: the one with the most relative change
+                # first, look at the current adaptation result
                 currentIons = self.adaptiveGeneratorIons.getCurrentResult()
                 if self.num_species > 1:
                     currentElectrons = self.adaptiveGeneratorElectrons.getCurrentResult()
                 
                 # identify the next most relevant levels
+                # try the "relative" criterion: the delta is divided by the level's own result
+                # parse shell boolean cf https://stackoverflow.com/questions/63116419/evaluate-boolean-environment-variable-in-python
+                relativeAdaptationCriterion = os.environ.get('ADAPTATION_PARAM_RELATIVE_ADAPTATION', 'True').lower() in ['true', '1']
+                activeLevelVectors = self.adaptiveGeneratorIons.getActiveSet()
                 levelIons = self.adaptiveGeneratorIons.getMostRelevant()
+                if relativeAdaptationCriterion:
+                    currentAbsRelativeMaxDelta = 0.
+                    for activeLevelVector in activeLevelVectors:
+                        pysgppActiveLevelVector = pysgpp.LevelVector(activeLevelVector)
+                        deltaActive = self.adaptiveGeneratorIons.getDelta(pysgppActiveLevelVector)
+                        if not np.isnan(deltaActive):
+                            relativeDeltaActive = deltaActive / \
+                                              self.adaptiveGeneratorIons.getQoIInformation(pysgppActiveLevelVector)
+                            if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
+                                currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
+                                levelIons = pysgppActiveLevelVector
                 deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)
+                
                 if self.num_species > 1:
                     levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
-                    deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)           
+                    if relativeAdaptationCriterion:
+                        currentAbsRelativeMaxDelta = 0.
+                        for activeLevelVector in activeLevelVectors:
+                            activeLevelVector = pysgpp.LevelVector(activeLevelVector)
+                            deltaActive = self.adaptiveGeneratorIons.getDelta(activeLevelVector)
+                            if not np.isnan(deltaActive):
+                                relativeDeltaActive = deltaActive / \
+                                                   self.adaptiveGeneratorElectrons.getQoIInformation(activeLevelVector)
+                                if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
+                                    currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
+                                    levelElectrons = activeLevelVector
+                    deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)
                 
                 #print(list(i for i in levelElectrons),list(i for i in levelIons))
                 #print(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet())
                 #print(self.adaptiveGeneratorIons.getRelevanceOfActiveSet())
 
-                # compare relative differences of the different levels
+                # compare relative differences of the different levels, to decide which species determines the adaptation
                 if self.num_species == 2 and abs(deltaElectrons / currentElectrons) > abs(deltaIons / currentIons):
                     # choose which one based on the relative change to the current value
                     l_adapt=levelElectrons
