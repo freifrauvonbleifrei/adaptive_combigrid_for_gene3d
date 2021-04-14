@@ -38,7 +38,10 @@ diagnostics_df = pd.DataFrame(data={
     'diagnostics_filename': ["flux_profile_", "flux_spectra_Qes_", "flux_spectra_Qem_", "flux_spectra_Ges_", "flux_spectra_Gem_", "profile_", "profile_", "profile_", "profile_"],
     'x_axis_name' : ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
 
-for diagnostics_index in range(len(diagnostics_df)):
+relativeRescale = os.environ.get('ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION', 'True').lower() in ['true', '1']
+
+# (relative rescale currently only works for qes diagnostics)
+for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
     QoI = diagnostics_df['QoI'][diagnostics_index]
     diagnostics_filename = diagnostics_dir + "profile_"
     diagnostics_filename = diagnostics_dir + diagnostics_df['diagnostics_filename'][diagnostics_index]
@@ -101,6 +104,32 @@ for diagnostics_index in range(len(diagnostics_df)):
     combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
     print("Running the scheme " + combiSchemeMode + " took approximately " + str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
 
+    def get_qes(results, probname):
+        qes0 = results['qes0'][probname]
+        if qes0 == 'qes0':
+            return None
+        qes0 = float(qes0)
+        if get_num_species() == 2:
+            qes = [qes0, float(results['qes1'][probname])]
+        else:
+            qes = [qes0]
+        return qes
+
+    # get average QoI
+    qesCombined = [0.]*get_num_species()
+    if QoI is "Q_es" or QoI is "Qes_ky":
+        # read from qes_results.csv
+        for component in combiScheme.itertuples(index=False):
+            probname = component.probname
+            coefficient = float(component.coefficient)
+            qesProb = get_qes(qes_results, probname)
+            for species in range(get_num_species()):
+                qesCombined[species] += coefficient * qesProb[species]
+        print("qes combined: " + str(qesCombined))
+    else:
+        # get from curves by trapezoidal rule
+        raise NotImplementedError
+
 
     # In[6]:
 
@@ -114,6 +143,7 @@ for diagnostics_index in range(len(diagnostics_df)):
             fnames = [[diagnostics_filename+'ions_'+ str(x) +'.h5'] for x in probname]
         return fnames
     filenames = get_filenames(combiScheme['probname'])
+    print(filenames)
 
     probname = combiScheme['probname'][0]
 
@@ -133,6 +163,10 @@ for diagnostics_index in range(len(diagnostics_df)):
                             Q_es = f[QoI + '_ions'  if species == 0 else QoI + '_electrons']
                         except KeyError:
                             Q_es = f[QoI]
+                        Q_es = np.array(Q_es)
+                        if relativeRescale:
+                            for q in range(len(Q_es)):
+                                Q_es[q] *= qesCombined[species]/get_qes(qes_results, probname)[species]
                         x_a = f[diagnostics_df['x_axis_name'][diagnostics_index]]
                         d = {QoI: np.array(Q_es), 'x_a': np.array(x_a)}
                         fluxes[probname][species] = pd.DataFrame(data=d)
@@ -196,7 +230,7 @@ for diagnostics_index in range(len(diagnostics_df)):
             combi_flux_species = pd.DataFrame(data={QoI: combi_flux_species, 'x_a': Xresampled})
             combi_flux.append(combi_flux_species)
         return combi_flux
-    combi_flux = get_combi_flux(fluxes, combiScheme)    
+    combi_flux = get_combi_flux(fluxes, combiScheme)
 
 
     # In[8]:
@@ -204,11 +238,11 @@ for diagnostics_index in range(len(diagnostics_df)):
 
 
     from bokeh.palettes import Category10_10 as palette
-    import itertools  
+    import itertools
 
     # create a color iterator
-    global colors 
-    colors = itertools.cycle(palette)  
+    global colors
+    colors = itertools.cycle(palette)
 
     # get profile plot
     def get_figure(x, width=None, height=None):
