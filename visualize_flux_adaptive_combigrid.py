@@ -105,19 +105,19 @@ for diagnostics_index in range(len(diagnostics_df)):
 
     def get_filenames(probname):
         if get_num_species() == 2:
-            fnames = [(diagnostics_filename+'ions_'+ str(x) +'.h5', diagnostics_filename+'electrons_'+ str(x) +'.h5') for x in probname]
+            fnames = [[diagnostics_filename+'ions_'+ str(x) +'.h5', diagnostics_filename+'electrons_'+ str(x) +'.h5'] for x in probname]
         elif get_num_species() == 1:
-            fnames = [(diagnostics_filename+'ions_'+ str(x) +'.h5') for x in probname]
+            fnames = [[diagnostics_filename+'ions_'+ str(x) +'.h5'] for x in probname]
         return fnames
     filenames = get_filenames(combiScheme['probname'])
 
     probname = combiScheme['probname'][0]
 
-    def filenames_to_fluxes(flux_filenames, resample=True):
+    def filenames_to_fluxes(flux_filenames, probnames, resample=True):
         fluxes = {}
 
-        for i in range(len(combiScheme['probname'])):
-            probname = combiScheme['probname'][i]
+        for i in range(len(probnames)):
+            probname = probnames[i]
             fluxes[probname]={}
             for species in range(get_num_species()):
                 try:
@@ -147,7 +147,7 @@ for diagnostics_index in range(len(diagnostics_df)):
 
             # cf. https://stackoverflow.com/questions/10464738/interpolation-on-dataframe-in-pandas
             for i in range(len(fluxes)):
-                probname = combiScheme['probname'][i]
+                probname = probnames[i]
                 for species in range(get_num_species()):
                     modflux = fluxes[probname][species]
                     modflux.set_index('x_a',inplace =True, drop=False)
@@ -172,7 +172,7 @@ for diagnostics_index in range(len(diagnostics_df)):
         else:
             return fluxes
 
-    fluxes, Xresampled = filenames_to_fluxes(filenames)
+    fluxes, Xresampled = filenames_to_fluxes(filenames, combiScheme['probname'])
     # fluxes = filenames_to_fluxes(filenames, False)
 
     # fluxes
@@ -243,21 +243,14 @@ for diagnostics_index in range(len(diagnostics_df)):
 
     # In[9]:
 
-
-    # fluxes_alejandro = []
-    # prefixes_alejandro = ['aim', 'dbm', 'eim00', 'ftm', 'kjm', 'eim00_hr']
-    # for p in prefixes_alejandro:
-    #     with h5py.File("flux_profiles_alejandro.h5",  "r") as f:
-    #         group = f['/']
-    #         Qes_ions = group['Qes_' + p]
-    #         xarray = group['xarray_' + p]
-    #         d = {'Q_es_ions': np.array(Qes_ions), 'x_a': np.array(xarray)}
-    #         fluxes_alejandro.append(pd.DataFrame(data=d))
-    # # fluxes_alejandro[2]
-    # plot_ref = get_plot(fluxes_alejandro[0], label=prefixes_alejandro[0], display_legend=True, width=1500)
-    # for i in range(len(prefixes_alejandro[1:])):
-    #     plot_ref = add_to_plot(plot_ref, fluxes_alejandro[i+1], label=prefixes_alejandro[i+1], display_legend=True)
-    # output_notebook()
+    ## plot reference results (here diagnostics are appended with "flw")
+    # filenames_ref = get_filenames(['flw'])
+    # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"])
+    # plot_ref = get_plot(fluxes_ref["ref"][0], label="reference ions", display_legend=True, width=1400)
+    # if get_num_species() > 1:
+    #     plot_ref = add_to_plot(plot_ref, fluxes_ref["ref"][1], label="reference electrons", display_legend=True)
+    # plot_ref.output_backend = "svg"
+    # export_svgs([plot_ref], filename=QoI + "_ref.svg")
     # show(plot_ref)
 
 
@@ -273,6 +266,12 @@ for diagnostics_index in range(len(diagnostics_df)):
     output_notebook()
     show(plot_combi)
 
+    ## have reference and combi plot in one
+    # plot_combi = add_to_plot(plot_combi, fluxes_ref["ref"][0], label="reference ions", display_legend=True)
+    # if get_num_species() > 1:
+    #     plot_combi = add_to_plot(plot_combi, fluxes_ref["ref"][1], label="reference electrons", display_legend=True)
+    # export_svgs([plot_combi], filename=QoI + "_" + combiSchemeMode[:-4] + "Combi_and_ref.svg")
+
 
     # In[11]:
 
@@ -287,7 +286,7 @@ for diagnostics_index in range(len(diagnostics_df)):
             fluxes_multiplied_with_coefficient[probname][species] = fluxes[probname][species].copy()
             if multiplyWithCoefficient:
                 fluxes_multiplied_with_coefficient[probname][species][QoI] = fluxes[probname][species][QoI] * combiScheme.iloc[i]['coefficient']
-        
+
     plot_scheme_mult_in_one = get_plot( fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]['probname']+" ions")
     if get_num_species() > 1:
         plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][1],label=combiScheme.iloc[0]['probname']+" electrons")
