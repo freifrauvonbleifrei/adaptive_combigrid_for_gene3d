@@ -60,9 +60,6 @@ for diagnostics_index in range(len(diagnostics_df)):
         return combiScheme
 
     combiScheme = get_combiScheme(prob_prefix, dropzeros=True)
-    combiScheme
-    # filenames
-    # lx_range
 
 
     # In[5]:
@@ -71,16 +68,22 @@ for diagnostics_index in range(len(diagnostics_df)):
     def printnan(results):
         for probname in results.index:
             cost_per_time = results['cost_per_time'][probname]
+            if cost_per_time == 'cost_per_time':
+                cost_per_time = 'nan'
+            cost_per_time = float(cost_per_time)
             if (np.isnan(cost_per_time)):
                 print("cost_per_time is not known for " + probname)
 
     def get_cost(results, probname, time_simulated=None):
         """returns the time needed for simulation, the unit is total core-seconds"""
         cost_per_time = results['cost_per_time'][probname]
+        if cost_per_time == 'cost_per_time':
+            cost_per_time = 'nan'
+        cost_per_time = float(cost_per_time)
         if (np.isnan(cost_per_time)):
             print(probname)
         if not time_simulated:
-            time_simulated = results['qes_to'][probname]
+            time_simulated = float(results['qes_to'][probname])
         return cost_per_time * time_simulated
 
     def get_total_cost(results, combischeme, time_simulated=None):
@@ -92,7 +95,8 @@ for diagnostics_index in range(len(diagnostics_df)):
     qes_results = pd.read_csv(os.environ.get('ADAPTATION_RESULTS_CSV'), index_col=0)
     printnan(qes_results)
 
-    get_cost(qes_results, "prob_5_5_5_5_4")
+    # to test:
+    # get_cost(qes_results, "prob_5_5_5_5_4")
 
     combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
     print("Running the scheme " + combiSchemeMode + " took approximately " + str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
