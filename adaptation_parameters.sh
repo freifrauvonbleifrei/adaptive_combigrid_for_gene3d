@@ -25,6 +25,7 @@ export ADAPTATION_SUBMIT_COMMAND="sbatch"
 export ADAPTATION_MINIMUM_LEVEL="[5,5,5,5,3]"
 export ADAPTATION_MAXIMUM_LEVEL="[10,10,10,10,6]"
 
+export ADAPTATION_PARAM_MAXIMUM_NUM_GRIDS="20"
 export ADAPTATION_PARAM_CROP_TIME="150.0"
 export ADAPTATION_PARAM_MIN_RUNTIME="500.0"
 export ADAPTATION_PARAM_TERMINATION_CRITERION_SEM_FACTOR="1."
@@ -34,6 +35,6 @@ export ADAPTATION_PARAM_SEM_MINIMUM_NUMBER_WINDOWS="3"
 export ADAPTATION_PARAM_RELATIVE_ADAPTATION=true
 # relative combination: the partial solutions for combination will be normalized to the total qes value
 # thus avoiding to add high relative noise in the combined solution
-export ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION=true
+export ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION=false
 
 export ADAPTATION_RESULTS_CSV="qes_results_species.csv"

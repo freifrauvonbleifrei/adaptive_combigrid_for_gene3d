@@ -11,4 +11,4 @@ lmin=[int(i.strip()) for i in environ.get('ADAPTATION_MINIMUM_LEVEL')[1:-1].spli
 lmax=[int(i.strip()) for i in environ.get('ADAPTATION_MAXIMUM_LEVEL')[1:-1].split(",")]
 adapt = dimadapt2d.DimensionalAdaptation(lmin, lmax, output3d=True)
 
-adapt.run_dimadapt_algorithm(100)
+adapt.run_dimadapt_algorithm(int(environ.get('ADAPTATION_PARAM_MAXIMUM_NUM_GRIDS')))
