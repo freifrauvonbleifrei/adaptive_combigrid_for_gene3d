@@ -94,15 +94,19 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
     #     print(costs)
         return np.sum(costs)
 
-
-    qes_results = pd.read_csv(os.environ.get('ADAPTATION_RESULTS_CSV'), index_col=0)
+    qes_results = pd.read_csv(os.environ.get(
+        'ADAPTATION_RESULTS_CSV'), index_col=0)
     printnan(qes_results)
 
-    # to test:
-    # get_cost(qes_results, "prob_5_5_5_5_4")
-
-    combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
-    print("Running the scheme " + combiSchemeMode + " took approximately " + str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
+    # try printing the computational costs for running the full scheme (including the zero-coefficient grids)
+    try:
+        # to test:
+        # get_cost(qes_results, "prob_5_5_5_5_4")
+        combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
+        print("Running the scheme " + combiSchemeMode + " took approximately " +
+              str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
+    except Exception as e:
+        print("Could not print cost: " + e)
 
     def get_qes(results, probname):
         qes0 = results['qes0'][probname]
