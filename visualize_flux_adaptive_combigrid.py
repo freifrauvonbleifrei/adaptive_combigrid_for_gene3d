@@ -106,7 +106,8 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
         print("Running the scheme " + combiSchemeMode + " took approximately " +
               str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
     except Exception as e:
-        print("Could not print cost: " + e)
+        print("Could not print cost: ")
+        print(e)
 
     def get_qes(results, probname):
         qes0 = results['qes0'][probname]
