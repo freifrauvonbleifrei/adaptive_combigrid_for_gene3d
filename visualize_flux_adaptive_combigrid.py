@@ -109,33 +109,6 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
         print("Could not print cost: ")
         print(e)
 
-    def get_qes(results, probname):
-        qes0 = results['qes0'][probname]
-        if qes0 == 'qes0':
-            return None
-        qes0 = float(qes0)
-        if get_num_species() == 2:
-            qes = [qes0, float(results['qes1'][probname])]
-        else:
-            qes = [qes0]
-        return qes
-
-    # get average QoI
-    qesCombined = [0.]*get_num_species()
-    if QoI is "Q_es" or QoI is "Qes_ky":
-        # read from qes_results.csv
-        for component in combiScheme.itertuples(index=False):
-            probname = component.probname
-            coefficient = float(component.coefficient)
-            qesProb = get_qes(qes_results, probname)
-            for species in range(get_num_species()):
-                qesCombined[species] += coefficient * qesProb[species]
-        print("qes combined: " + str(qesCombined))
-    else:
-        # get from curves by trapezoidal rule
-        raise NotImplementedError
-
-
     # In[6]:
 
     # extract the flux profiles
@@ -169,9 +142,6 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
                         except KeyError:
                             Q_es = f[QoI]
                         Q_es = np.array(Q_es)
-                        if relativeRescale:
-                            for q in range(len(Q_es)):
-                                Q_es[q] *= qesCombined[species]/get_qes(qes_results, probname)[species]
                         x_a = f[diagnostics_df['x_axis_name'][diagnostics_index]]
                         d = {QoI: np.array(Q_es), 'x_a': np.array(x_a)}
                         fluxes[probname][species] = pd.DataFrame(data=d)
@@ -216,11 +186,60 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
             return fluxes
 
     fluxes, Xresampled = filenames_to_fluxes(filenames, combiScheme['probname'])
-    # fluxes = filenames_to_fluxes(filenames, False)
 
-    # fluxes
-    # len(Xresampled), len(fluxes[probname][0]['Q_es'])
-    # fluxes[probname][0], fluxes[probname][1]
+    def get_qes_trapezoidal(fluxes, probname):
+        qes = [0.]*get_num_species()
+        for species in range(get_num_species()):
+            # print(fluxes[probname][species])
+            qes[species] = np.trapz(
+                fluxes[probname][species]["Q_es"], x=fluxes[probname][species]["x_a"], axis=0)
+        return qes
+
+    def get_qes_csv(results, probname):
+        qes0 = results['qes0'][probname]
+        if qes0 == 'qes0':
+            return None
+        qes0 = float(qes0)
+        if get_num_species() == 2:
+            qes = [qes0, float(results['qes1'][probname])]
+        else:
+            qes = [qes0]
+        return qes
+
+    # get combined average QoI
+    qesCombined = [0.]*get_num_species()
+    qesCombinedTrap = [0.]*get_num_species()
+    if QoI is "Q_es":  # or QoI is "Qes_ky":
+        # read from qes_results.csv
+        for component in combiScheme.itertuples(index=False):
+            probname = component.probname
+            coefficient = float(component.coefficient)
+            qesProb = get_qes_csv(qes_results, probname)
+            qesProbTrap = get_qes_trapezoidal(fluxes, probname)
+            # print("Qes " + probname + " ", qesProb, qesProbTrap)
+            for species in range(get_num_species()):
+                qesCombined[species] += coefficient * qesProb[species]
+                qesCombinedTrap[species] += coefficient * qesProbTrap[species]
+        print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
+    else:
+        # get from curves by trapezoidal rule
+        raise NotImplementedError
+
+    if relativeRescale:
+        for probname in combiScheme['probname']:
+            for species in range(get_num_species()):
+                print("rescaling ", probname, species)
+                csvRescaleFactor = qesCombined[species] / \
+                    get_qes_csv(qes_results, probname)[species]
+                trapRescaleFactor = qesCombinedTrap[species] / \
+                    get_qes_trapezoidal(fluxes, probname)[species]
+                if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
+                    print("different rescaling relations! ",
+                          csvRescaleFactor, trapRescaleFactor)
+                for q in range(len(fluxes[probname][species][QoI])):
+                    fluxes[probname][species][QoI][q] *= csvRescaleFactor
+
+
 
 
     # In[7]:
