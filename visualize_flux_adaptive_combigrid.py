@@ -163,7 +163,12 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
                 probname = probnames[i]
                 for species in range(get_num_species()):
                     modflux = fluxes[probname][species]
-                    modflux.set_index('x_a',inplace =True, drop=False)
+                    modflux.set_index('x_a', inplace=True, drop=False)
+                    # to avoid interpolate error for newer pandas versions:
+                    # cf. https://github.com/pandas-dev/pandas/issues/33956
+                    commonIndex = pd.Float64Index(modflux.index.union(
+                        Xresampled), dtype=np.float64, name=200.)
+                    modflux = modflux.reindex(commonIndex)
 
                     #Interpolation technique to use. One of:
 
@@ -174,11 +179,13 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
                     #'nearest', 'zero', 'slinear', 'quadratic', 'cubic', 'spline', 'barycentric', 'polynomial': Passed to scipy.interpolate.interp1d. These methods use the numerical values of the index. Both 'polynomial' and 'spline' require that you also specify an order (int), e.g. df.interpolate(method='polynomial', order=5).
                     #'krogh', 'piecewise_polynomial', 'spline', 'pchip', 'akima': Wrappers around the SciPy interpolation methods of similar names. See Notes.
                     #'from_derivatives': Refers to scipy.interpolate.BPoly.from_derivatives which replaces 'piecewise_polynomial' interpolation method in scipy 0.18.
+                    # modflux = modflux.interpolate('linear').loc[Xresampled]
+                    modflux = modflux.interpolate(
+                        'polynomial', order=1).loc[Xresampled]
 
-            #         modflux = modflux.reindex(modflux.index.union(Xresampled)).interpolate('linear').loc[Xresampled]
-                    modflux = modflux.reindex(modflux.index.union(Xresampled)).interpolate('polynomial', order=1).loc[Xresampled]
                     modflux.reset_index(inplace=True, drop=True)
-                    modflux.fillna(0., inplace=True) # fill values at the ends with zeroes
+                    # fill values at the ends with zeroes
+                    modflux.fillna(0., inplace=True)
                     fluxes[probname][species] = modflux
 
             return fluxes, Xresampled
