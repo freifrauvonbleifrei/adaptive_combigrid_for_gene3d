@@ -35,6 +35,9 @@ export ADAPTATION_PARAM_SEM_MINIMUM_NUMBER_WINDOWS="3"
 export ADAPTATION_PARAM_RELATIVE_ADAPTATION=true
 # relative combination: the partial solutions for combination will be normalized to the total qes value
 # thus avoiding to add high relative noise in the combined solution
-export ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION=false
+export ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION=true
+# rolling average: smooth the profile with its neighbors before (rescaling and) combining
+# =1 corresponds to no averaging
+export ADAPTATION_POSTPROCESSING_ROLLING_AVG_NUM_POINTS=1
 
 export ADAPTATION_RESULTS_CSV="qes_results_species.csv"

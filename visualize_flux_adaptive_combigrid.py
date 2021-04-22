@@ -39,6 +39,8 @@ diagnostics_df = pd.DataFrame(data={
     'x_axis_name' : ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
 
 relativeRescale = os.environ.get('ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION', 'True').lower() in ['true', '1']
+rollingAvgNumPoints = int(os.environ.get('ADAPTATION_POSTPROCESSING_ROLLING_AVG_NUM_POINTS', '1'))
+
 
 # (relative rescale currently only works for qes diagnostics)
 for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
@@ -145,6 +147,8 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
                         x_a = f[diagnostics_df['x_axis_name'][diagnostics_index]]
                         d = {QoI: np.array(Q_es), 'x_a': np.array(x_a)}
                         fluxes[probname][species] = pd.DataFrame(data=d)
+                        # print(fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum(), fluxes[probname][species][QoI])
+                        fluxes[probname][species][QoI] = fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum().div(rollingAvgNumPoints)
                 except Exception as e:
                     print("error reading filename: " + flux_filenames[i][species] + " " + str(flux_filenames) + " " + str(i) + " " + str(species))
                     raise e
