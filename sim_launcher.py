@@ -7,16 +7,27 @@ import subprocess
 from shutil import copyfile, copy2
 
 
+def l_vec_longer(level_vector):
+    yIsX = os.environ.get('ADAPTATION_PARAM_Y_EQUALS_X',
+                          'False').lower() in ['true', '1']
+    if yIsX and len(level_vector) < 5:
+        level_vector = [level_vector[0]] + level_vector
+    assert (len(level_vector) < 5)
+    return level_vector
+
 def l_vec_to_string(l):
     return "prob_" + str("_".join([str(l_i) for l_i in l]))
 
 def get_prob_path(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
+    level_vector = l_vec_longer(level_vector)
     return os.path.join(prob_prepath, l_vec_to_string(level_vector))
 
 def check_folder_exists(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
+    level_vector = l_vec_longer(level_vector)
     return os.path.isfile(os.path.join(get_prob_path(prob_prepath, level_vector), 'parameters'))
 
 def check_finished(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
+    level_vector = l_vec_longer(level_vector)
     # if the simulation has run, but not long enough
     if os.path.isfile(os.path.join(get_prob_path(prob_prepath, level_vector), 'GENE.finished')):
         return True
@@ -24,6 +35,7 @@ def check_finished(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_ve
 
 def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'), level_vector=None, newSimTime=None):
     assert (level_vector)
+    level_vector = l_vec_longer(level_vector)
     assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
     assert (check_finished(prob_prepath, level_vector))
     # if the simulation has run, but not long enough
@@ -55,6 +67,7 @@ def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=o
 
 
 def dispatch_to_run(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None, gene_directory=os.environ.get('ADAPTATION_GENE3D_PATH')):
+    level_vector = l_vec_longer(level_vector)
     assert not (check_folder_exists(prob_prepath, level_vector))
     assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
     with open(os.environ.get('ADAPTATION_PARAMETER_FILE_TEMPLATE'), 'r') as pfile:
