@@ -73,7 +73,7 @@ class DimensionalAdaptation:
             self.adaptiveGeneratorElectrons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         
         # set start results
-        qes_data = Qes_data.Qes_data(lmin)
+        qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(lmin))
         result = qes_data.get_result()
         sgppActiveLevelVector=pysgpp.LevelVector(lmin)
         self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
@@ -136,7 +136,7 @@ class DimensionalAdaptation:
                 
                 if (not self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
                     print(activeLevelVector, waitingForNumberOfResults)
-                    qes_data = Qes_data.Qes_data(activeLevelVector)
+                    qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(lmin))
                     result = qes_data.get_result()
     #                result = [0.3,0.3]
                     if result:

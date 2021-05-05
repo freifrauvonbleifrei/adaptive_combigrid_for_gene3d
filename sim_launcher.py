@@ -20,8 +20,9 @@ def l_vec_longer(level_vector):
     assert (len(level_vector) == 5)
     return level_vector
 
-def l_vec_to_string(l):
-    return "prob_" + str("_".join([str(l_i) for l_i in l]))
+def l_vec_to_string(level_vector):
+    level_vector = l_vec_longer(level_vector)
+    return "prob_" + str("_".join([str(l_i) for l_i in level_vector]))
 
 def get_prob_path(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None):
     level_vector = l_vec_longer(level_vector)
