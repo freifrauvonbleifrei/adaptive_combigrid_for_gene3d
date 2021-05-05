@@ -136,7 +136,7 @@ class DimensionalAdaptation:
                 
                 if (not self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
                     print(activeLevelVector, waitingForNumberOfResults)
-                    qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(lmin))
+                    qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(activeLevelVector))
                     result = qes_data.get_result()
     #                result = [0.3,0.3]
                     if result:
