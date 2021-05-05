@@ -6,12 +6,17 @@ import math
 import subprocess
 from shutil import copyfile, copy2
 
+def thingToList(thing):
+    l = []
+    for i in range(len(thing)):
+        l.append(thing[i])
+    return l
 
 def l_vec_longer(level_vector):
     yIsX = os.environ.get('ADAPTATION_PARAM_Y_EQUALS_X',
                           'False').lower() in ['true', '1']
     if yIsX and len(level_vector) < 5:
-        level_vector = [level_vector[0]] + level_vector
+        level_vector = [level_vector[0]] + thingToList(level_vector)
     assert (len(level_vector) < 5)
     return level_vector
 
