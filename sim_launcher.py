@@ -17,7 +17,7 @@ def l_vec_longer(level_vector):
                           'False').lower() in ['true', '1']
     if yIsX and len(level_vector) < 5:
         level_vector = [level_vector[0]] + thingToList(level_vector)
-    assert (len(level_vector) < 5)
+    assert (len(level_vector) == 5)
     return level_vector
 
 def l_vec_to_string(l):
