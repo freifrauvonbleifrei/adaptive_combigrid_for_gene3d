@@ -92,11 +92,22 @@ class DimensionalAdaptation:
             delta.append(self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector))
         qes_data.set_delta_to_csv(delta)
 
-        print("starting with: " + self.get_results_string())
-
         if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
-            print("please run the initial simulation longer!")
-            assert(False)
+            #prolong simulation
+            if sim_launcher.check_folder_exists(self.prob_prepath, lmin):
+                if sim_launcher.check_finished(self.prob_prepath, lmin):
+                    # restart the simulation
+                    print("sim_launcher: restart "+str(lmin))
+                    sim_launcher.restart_sim(
+                        self.prob_prepath, self.gene_path, lmin)
+                print("need to run the inital simulation longer!", lmin)
+                raise AssertionError(
+                    "need to run the inital simulation longer -- run the script again later!")
+            else:
+                raise AssertionError(
+                    "something went wrong with the initial simulation -- check the prob_ directory")
+
+        print("starting with: " + self.get_results_string())
 
     def get_results_string(self):
         if self.num_species == 1:
