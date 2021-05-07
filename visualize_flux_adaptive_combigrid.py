@@ -145,7 +145,8 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
                             Q_es = f[QoI]
                         Q_es = np.array(Q_es)
                         x_a = f[diagnostics_df['x_axis_name'][diagnostics_index]]
-                        d = {QoI: np.array(Q_es), 'x_a': np.array(x_a)}
+                        SI_conv    = f['SI_conv']
+                        d = {QoI: np.array(Q_es) * np.array(SI_conv), 'x_a': np.array(x_a)}
                         fluxes[probname][species] = pd.DataFrame(data=d)
                         # print(fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum(), fluxes[probname][species][QoI])
                         fluxes[probname][species][QoI] = fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum().div(rollingAvgNumPoints)
