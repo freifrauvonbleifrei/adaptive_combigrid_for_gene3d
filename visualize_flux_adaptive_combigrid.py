@@ -270,8 +270,14 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
         return combi_flux
     combi_flux = get_combi_flux(fluxes, combiScheme)
 
-
-    # In[8]:
+    # write out combined flux as h5 and .txt data
+    combi_filename_begin = "./" + QoI + "_" + combiSchemeMode[:-4] + "_Combi_"
+    with h5py.File(combi_filename_begin + "ions.h5",  "w") as f:
+        f.create_dataset('x_a', data=combi_flux[0]['x_a'])
+        f.create_dataset(QoI, data=combi_flux[0][QoI])
+    np.savetxt(combi_filename_begin + "ions.txt", combi_flux[0])
+    if get_num_species() > 1:
+        np.savetxt(combi_filename_begin + "electrons.txt", combi_flux[1])
 
 
 
