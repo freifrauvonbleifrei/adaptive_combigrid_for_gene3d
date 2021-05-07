@@ -261,14 +261,18 @@ for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
 
     def get_combi_flux(fluxes, combiScheme):
         # print(len(fluxes))
-        combi_flux= []
+        combi_flux = []
         for species in range(get_num_species()):
-            combi_flux_species = [fluxes[combiScheme.loc[x]['probname']][species][QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
+            combi_flux_species = [fluxes[combiScheme.loc[x]['probname']][species]
+                                  [QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
             combi_flux_species = pd.DataFrame(data=combi_flux_species).sum()
-            combi_flux_species = pd.DataFrame(data={QoI: combi_flux_species, 'x_a': Xresampled})
+            combi_flux_species = pd.DataFrame(
+                data={QoI: combi_flux_species, 'x_a': Xresampled})
             combi_flux.append(combi_flux_species)
         return combi_flux
     combi_flux = get_combi_flux(fluxes, combiScheme)
+    for c in combi_flux:
+        c[QoI].clip(lower=0., inplace=True)
 
     # write out combined flux as h5 and .txt data
     combi_filename_begin = "./" + QoI + "_" + combiSchemeMode[:-4] + "_Combi_"
