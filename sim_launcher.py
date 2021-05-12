@@ -71,10 +71,17 @@ def restart_sim(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), gene_path=o
     # submit
     subprocess.run(os.environ.get('ADAPTATION_SUBMIT_COMMAND')+ " " + qname, shell=True, cwd=prob_dir)
 
+class ProbFolderExistsError(RuntimeError):
+    def __init__(self, data):    
+        self.data = data
+    def __str__(self):
+        return repr(self.data)
+
 
 def dispatch_to_run(prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'), level_vector=None, gene_directory=os.environ.get('ADAPTATION_GENE3D_PATH')):
     level_vector = l_vec_longer(level_vector)
-    assert not (check_folder_exists(prob_prepath, level_vector))
+    if check_folder_exists(prob_prepath, level_vector):
+        raise ProbFolderExistsError
     assert(os.environ.get('ADAPTATION_SUBMIT_COMMAND') is not None)
     with open(os.environ.get('ADAPTATION_PARAMETER_FILE_TEMPLATE'), 'r') as pfile:
         pdata = pfile.read()
