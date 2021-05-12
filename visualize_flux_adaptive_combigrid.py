@@ -43,7 +43,7 @@ rollingAvgNumPoints = int(os.environ.get('ADAPTATION_POSTPROCESSING_ROLLING_AVG_
 
 
 # (relative rescale currently only works for qes diagnostics)
-for diagnostics_index in [0,1]: #range(len(diagnostics_df)):
+for diagnostics_index in [0]: #range(len(diagnostics_df)):
     QoI = diagnostics_df['QoI'][diagnostics_index]
     diagnostics_filename = diagnostics_dir + "profile_"
     diagnostics_filename = diagnostics_dir + diagnostics_df['diagnostics_filename'][diagnostics_index]
