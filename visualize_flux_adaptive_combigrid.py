@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+from write_flux_adaptive_combigrid import get_combiScheme, get_filenames, \
+    get_combi_flux, get_qes_csv, get_qes_trapezoidal, printnan, filenames_to_fluxes, \
+    get_cost, get_total_cost
+from Qes_data import get_num_species
 import os
 import sys
 import subprocess
@@ -8,16 +12,13 @@ import pkg_resources
 import math
 import numpy as np
 import pandas as pd
+import h5py
 
 from bokeh.layouts import gridplot, column, row
 from bokeh.models import Legend, Band, ColumnDataSource, Span, RangeSlider, Range, Panel, Plot, Range1d, Circle, LinearColorMapper, ColorBar, HoverTool
 from bokeh.plotting import figure, show, output_notebook
 from bokeh.io import export_svgs, export_png
 bokeh_version = pkg_resources.get_distribution('bokeh').version
-
-from Qes_data import get_num_species
-
-import h5py
 
 
 # In[2]:
@@ -56,45 +57,8 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     if (len(sys.argv) > 1):
         combiSchemeMode = sys.argv[1]
 
-    def get_combiScheme(prefix, mode=combiSchemeMode, dropzeros=True):
-        combiScheme = pd.read_csv(prefix+combiSchemeMode, index_col=0)
-        if dropzeros:
-            combiScheme = combiScheme[combiScheme['coefficient'] != 0].reset_index(drop=True)
-    #     combiScheme = combiScheme[1:].reset_index(drop=True)
-        assert(abs( combiScheme['coefficient'].sum() - 1) < 1e-6)
-        return combiScheme
 
-    combiScheme = get_combiScheme(prob_prefix, dropzeros=True)
-
-
-    # In[5]:
-
-
-    def printnan(results):
-        for probname in results.index:
-            cost_per_time = results['cost_per_time'][probname]
-            if cost_per_time == 'cost_per_time':
-                cost_per_time = 'nan'
-            cost_per_time = float(cost_per_time)
-            if (np.isnan(cost_per_time)):
-                print("cost_per_time is not known for " + probname)
-
-    def get_cost(results, probname, time_simulated=None):
-        """returns the time needed for simulation, the unit is total core-seconds"""
-        cost_per_time = results['cost_per_time'][probname]
-        if cost_per_time == 'cost_per_time':
-            cost_per_time = 'nan'
-        cost_per_time = float(cost_per_time)
-        if (np.isnan(cost_per_time)):
-            print(probname)
-        if not time_simulated:
-            time_simulated = float(results['qes_to'][probname])
-        return cost_per_time * time_simulated
-
-    def get_total_cost(results, combischeme, time_simulated=None):
-        costs = [get_cost(results, probname, time_simulated) for probname in combischeme['probname']]
-    #     print(costs)
-        return np.sum(costs)
+    combiScheme = get_combiScheme(prob_prefix, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
 
     qes_results = pd.read_csv(os.environ.get(
         'ADAPTATION_RESULTS_CSV'), index_col=0)
@@ -116,108 +80,12 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     # extract the flux profiles
     subprocess.run("./extract_flux_profile.sh", shell=True)
 
-    def get_filenames(probname):
-        if get_num_species() == 2:
-            fnames = [[diagnostics_filename+'ions_'+ str(x) +'.h5', diagnostics_filename+'electrons_'+ str(x) +'.h5'] for x in probname]
-        elif get_num_species() == 1:
-            fnames = [[diagnostics_filename+'ions_'+ str(x) +'.h5'] for x in probname]
-        return fnames
     filenames = get_filenames(combiScheme['probname'])
     print(filenames)
 
     probname = combiScheme['probname'][0]
 
-    def filenames_to_fluxes(flux_filenames, probnames, resample=True):
-        fluxes = {}
-
-        for i in range(len(probnames)):
-            probname = probnames[i]
-            fluxes[probname]={}
-            for species in range(get_num_species()):
-                try:
-                    with h5py.File(flux_filenames[i][species],  "r") as f:
-        #                 print(flux_filenames[i][species])
-                        for item in f.attrs.keys():
-                            print(item + ":", f.attrs[item])
-                        try:
-                            Q_es = f[QoI + '_ions'  if species == 0 else QoI + '_electrons']
-                        except KeyError:
-                            Q_es = f[QoI]
-                        Q_es = np.array(Q_es)
-                        x_a = f[diagnostics_df['x_axis_name'][diagnostics_index]]
-                        SI_conv    = f['SI_conv']
-                        d = {QoI: np.array(Q_es) * np.array(SI_conv), 'x_a': np.array(x_a)}
-                        fluxes[probname][species] = pd.DataFrame(data=d)
-                        # print(fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum(), fluxes[probname][species][QoI])
-                        fluxes[probname][species][QoI] = fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum().div(rollingAvgNumPoints)
-                except Exception as e:
-                    print("error reading filename: " + flux_filenames[i][species] + " " + str(flux_filenames) + " " + str(i) + " " + str(species))
-                    raise e
-        if resample:
-            Xresampled = set()
-            for probname in fluxes:
-                x_coords_prob = fluxes[probname][0]['x_a']
-                Xresampled = Xresampled | set(x_coords_prob)
-            # if in spectral space, remove zero value:
-            if (diagnostics_df['x_axis_name'][diagnostics_index] == "ky"):
-                Xresampled.discard(0.)
-            Xresampled = sorted(Xresampled)
-
-            # cf. https://stackoverflow.com/questions/10464738/interpolation-on-dataframe-in-pandas
-            for i in range(len(fluxes)):
-                probname = probnames[i]
-                for species in range(get_num_species()):
-                    modflux = fluxes[probname][species]
-                    modflux.set_index('x_a', inplace=True, drop=False)
-                    # to avoid interpolate error for newer pandas versions:
-                    # cf. https://github.com/pandas-dev/pandas/issues/33956
-                    commonIndex = pd.Float64Index(modflux.index.union(
-                        Xresampled), dtype=np.float64, name=200.)
-                    modflux = modflux.reindex(commonIndex)
-
-                    #Interpolation technique to use. One of:
-
-                    #'linear': Ignore the index and treat the values as equally spaced. This is the only method supported on MultiIndexes.
-                    #'time': Works on daily and higher resolution data to interpolate given length of interval.
-                    #'index', 'values': use the actual numerical values of the index.
-                    #'pad': Fill in NaNs using existing values.
-                    #'nearest', 'zero', 'slinear', 'quadratic', 'cubic', 'spline', 'barycentric', 'polynomial': Passed to scipy.interpolate.interp1d. These methods use the numerical values of the index. Both 'polynomial' and 'spline' require that you also specify an order (int), e.g. df.interpolate(method='polynomial', order=5).
-                    #'krogh', 'piecewise_polynomial', 'spline', 'pchip', 'akima': Wrappers around the SciPy interpolation methods of similar names. See Notes.
-                    #'from_derivatives': Refers to scipy.interpolate.BPoly.from_derivatives which replaces 'piecewise_polynomial' interpolation method in scipy 0.18.
-                    # modflux = modflux.interpolate('linear').loc[Xresampled]
-                    modflux = modflux.interpolate(
-                        'polynomial', order=1).loc[Xresampled]
-
-                    modflux.reset_index(inplace=True, drop=True)
-                    # fill values at the ends with zeroes
-                    modflux.fillna(0., inplace=True)
-                    fluxes[probname][species] = modflux
-
-            return fluxes, Xresampled
-        else:
-            return fluxes
-
     fluxes, Xresampled = filenames_to_fluxes(filenames, combiScheme['probname'])
-
-    def get_qes_trapezoidal(fluxes, probname):
-        qes = [0.]*get_num_species()
-        for species in range(get_num_species()):
-            # print(fluxes[probname][species])
-            qes[species] = np.trapz(
-                fluxes[probname][species]["Q_es"], x=fluxes[probname][species]["x_a"], axis=0)
-        return qes
-
-    def get_qes_csv(results, probname):
-        qes0 = results['qes0'][probname]
-        if qes0 == 'qes0':
-            return None
-        qes0 = float(qes0)
-        if get_num_species() == 2:
-            qes = [qes0, float(results['qes1'][probname])]
-        else:
-            qes = [qes0]
-        return qes
-
 
     if relativeRescale:
     # get combined average QoI
@@ -257,20 +125,8 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
 
 
     # In[7]:
-
-
-    def get_combi_flux(fluxes, combiScheme):
-        # print(len(fluxes))
-        combi_flux = []
-        for species in range(get_num_species()):
-            combi_flux_species = [fluxes[combiScheme.loc[x]['probname']][species]
-                                  [QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
-            combi_flux_species = pd.DataFrame(data=combi_flux_species).sum()
-            combi_flux_species = pd.DataFrame(
-                data={QoI: combi_flux_species, 'x_a': Xresampled})
-            combi_flux.append(combi_flux_species)
-        return combi_flux
     combi_flux = get_combi_flux(fluxes, combiScheme)
+
     for c in combi_flux:
         c[QoI].clip(lower=0., inplace=True)
 
