@@ -9,6 +9,11 @@ export PYTHONPATH=$DIAG_PATH/GENE_gui_python:$PYTHONPATH
 DIAGNOSTICS=DiagFluxesgene3d
 OUTDIR='./flux_diags/'
 mkdir -p $OUTDIR
+
+STARTTIME=${ADAPTATION_PARAM_CROP_TIME}
+if [ ! -z $1 ]; then
+    STARTTIME=$1
+fi
 for PROBNAME in $PROB_PREPATH/prob_*; do
     PROBNAME=$(basename $PROBNAME)
     #PROBNAME='prob_5_5_5_5_3'
@@ -24,8 +29,8 @@ for PROBNAME in $PROB_PREPATH/prob_*; do
         #    fi
         #done
 
-        # only re-run the diagnostic if the nrg.dat file is newer than the existing flux profile output
-        if [ ! -e $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] || [ $PROB_PREPATH/$PROBNAME/out/nrg.dat -nt $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] ; then
+        # only re-run the diagnostic if the nrg.dat file is newer than the existing flux profile output; also if arguments are given
+        if [ ! -e $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] || [ $PROB_PREPATH/$PROBNAME/out/nrg.dat -nt $OUTDIR/flux_profile_ions_$PROBNAME.h5 ] || [ ! -z $1 ] ; then
             
             NRGFILESLIST=""
             # https://unix.stackexchange.com/questions/239772/bash-iterate-file-list-except-when-empty
@@ -40,9 +45,15 @@ for PROBNAME in $PROB_PREPATH/prob_*; do
             if [ -e $PROB_PREPATH/$PROBNAME/out/nrg.dat ] ; then
                 NRGFILESLIST+=" .dat"
             fi
-            
-            #python3 ${DIAG_PATH}/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
-            python3 ./additional-diagnostics/additional_diagnostics.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+            # if a second argument is given, that denotes the end time
+            if [ ! -z $2 ]; then
+                #python3 ${DIAG_PATH}/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+                python3 ./additional-diagnostics/additional_diagnostics.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${STARTTIME} --endtime=$2 -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+
+            else
+                #python3 ${DIAG_PATH}/GENE_gui_python/gene_cl.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${ADAPTATION_PARAM_CROP_TIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+                python3 ./additional-diagnostics/additional_diagnostics.py -i $PROB_PREPATH/$PROBNAME/out -o $OUTDIR --starttime=${STARTTIME} -d${DIAGNOSTICS} -e ${NRGFILESLIST}
+            fi
 
             #mv $OUTDIR/flux_profile_ions_.h5 $OUTDIR/flux_profile_ions__$PROBNAME.h5
             mv $OUTDIR/flux_profile_ions.h5 $OUTDIR/flux_profile_ions_$PROBNAME.h5
