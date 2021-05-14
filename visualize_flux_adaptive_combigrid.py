@@ -68,7 +68,7 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     try:
         # to test:
         # get_cost(qes_results, "prob_5_5_5_5_4")
-        combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
+        combiSchemeCost = get_combiScheme(prob_prefix, combiSchemeMode, dropzeros=False)
         print("Running the scheme " + combiSchemeMode + " took approximately " +
               str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
     except Exception as e:

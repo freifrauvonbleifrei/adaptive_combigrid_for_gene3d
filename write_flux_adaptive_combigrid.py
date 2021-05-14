@@ -195,7 +195,7 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         prob_prefix = ''
 
         combiScheme = get_combiScheme(
-            prob_prefix, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
+            prob_prefix, combiSchemeMode, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
 
         qes_results = pd.read_csv(os.environ.get(
             'ADAPTATION_RESULTS_CSV'), index_col=0)
@@ -205,7 +205,7 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         try:
             # to test:
             # get_cost(qes_results, "prob_5_5_5_5_4")
-            combiSchemeCost = get_combiScheme(prob_prefix, dropzeros=False)
+            combiSchemeCost = get_combiScheme(prob_prefix, combiSchemeMode, dropzeros=False)
             print("Running the scheme " + combiSchemeMode + " took approximately " +
                   str(get_total_cost(qes_results, combiSchemeCost)/3600) + " core-h")
         except Exception as e:
