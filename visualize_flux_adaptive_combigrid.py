@@ -58,7 +58,7 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
         combiSchemeMode = sys.argv[1]
 
 
-    combiScheme = get_combiScheme(prob_prefix, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
+    combiScheme = get_combiScheme(prob_prefix, combiSchemeMode, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
 
     qes_results = pd.read_csv(os.environ.get(
         'ADAPTATION_RESULTS_CSV'), index_col=0)
@@ -80,12 +80,14 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     # extract the flux profiles
     subprocess.run("./extract_flux_profile.sh", shell=True)
 
-    filenames = get_filenames(combiScheme['probname'])
+    filenames = get_filenames(combiScheme['probname'], diagnostics_filename)
     print(filenames)
 
     probname = combiScheme['probname'][0]
 
-    fluxes, Xresampled = filenames_to_fluxes(filenames, combiScheme['probname'])
+    fluxes, Xresampled = filenames_to_fluxes(
+        filenames, combiScheme['probname'], QoI,
+        diagnostics_df['x_axis_name'][diagnostics_index])
 
     if relativeRescale:
         # get combined average QoI
@@ -125,21 +127,10 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
 
 
     # In[7]:
-    combi_flux = get_combi_flux(fluxes, combiScheme)
+    combi_flux = get_combi_flux(fluxes, combiScheme, QoI, Xresampled)
 
     for c in combi_flux:
         c[QoI].clip(lower=0., inplace=True)
-
-    # write out combined flux as h5 and .txt data
-    combi_filename_begin = "./" + QoI + "_" + combiSchemeMode[:-4] + "_Combi_"
-    with h5py.File(combi_filename_begin + "ions.h5",  "w") as f:
-        f.create_dataset('x_a', data=combi_flux[0]['x_a'])
-        f.create_dataset(QoI, data=combi_flux[0][QoI])
-    np.savetxt(combi_filename_begin + "ions.txt", combi_flux[0])
-    if get_num_species() > 1:
-        np.savetxt(combi_filename_begin + "electrons.txt", combi_flux[1])
-
-
 
     from bokeh.palettes import Category10_10 as palette
     import itertools
@@ -188,8 +179,9 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     svgSuffix = "_" + ("relative" if relativeRescale else "absolute") + "_" + str(rollingAvgNumPoints) + ".svg"
 
     # # plot reference results (here diagnostics are appended with "2mw")
-    # filenames_ref = get_filenames(['2mw'])
-    # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"])
+    # filenames_ref = get_filenames(['2mw'], diagnostics_filename)
+    # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"], QoI,
+    #     diagnostics_df['x_axis_name'][diagnostics_index])
     # plot_ref = get_plot(fluxes_ref["ref"][0], label="reference ions", display_legend=True, width=1400)
     # if get_num_species() > 1:
     #     plot_ref = add_to_plot(plot_ref, fluxes_ref["ref"][1], label="reference electrons", display_legend=True)
@@ -209,9 +201,10 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     # show(plot_combi)
 
     # # add "best" component to plot
-    # best_component="prob_8_7_6_5_3"
-    # filenames_best = get_filenames([best_component])
-    # fluxes_best, _ = filenames_to_fluxes(filenames_best, [best_component])
+    # best_component="prob_8_8_5_5_3"
+    # filenames_best = get_filenames([best_component], diagnostics_filename)
+    # fluxes_best, _ = filenames_to_fluxes(filenames_best, [best_component], QoI,
+    #     diagnostics_df['x_axis_name'][diagnostics_index])
     # plot_combi = add_to_plot(plot_combi, fluxes_best[best_component][0], label=best_component, display_legend=True, color="grey")
     # if get_num_species() > 1:
     #     plot_combi = add_to_plot(plot_combi, fluxes_best[best_component][1], label=best_component, display_legend=True, color="grey")
