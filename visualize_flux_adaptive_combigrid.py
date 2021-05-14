@@ -120,11 +120,8 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
                     print("different rescaling relations! ",
                           csvRescaleFactor, trapRescaleFactor)
                 for q in range(len(fluxes[probname][species][QoI])):
-                    fluxes[probname][species][QoI][q] *= csvRescaleFactor
-                    # fluxes[probname][species][QoI][q] *= trapRescaleFactor
-
-
-
+                    # fluxes[probname][species][QoI][q] *= csvRescaleFactor
+                    fluxes[probname][species][QoI][q] *= trapRescaleFactor
 
     # In[7]:
     combi_flux = get_combi_flux(fluxes, combiScheme, QoI, Xresampled)
