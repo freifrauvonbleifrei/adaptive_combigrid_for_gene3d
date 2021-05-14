@@ -88,24 +88,24 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     fluxes, Xresampled = filenames_to_fluxes(filenames, combiScheme['probname'])
 
     if relativeRescale:
-    # get combined average QoI
-    qesCombined = [0.]*get_num_species()
-    qesCombinedTrap = [0.]*get_num_species()
-    if QoI is "Q_es":  # or QoI is "Qes_ky":
-        # read from qes_results.csv
-        for component in combiScheme.itertuples(index=False):
-            probname = component.probname
-            coefficient = float(component.coefficient)
-            qesProb = get_qes_csv(qes_results, probname)
-            qesProbTrap = get_qes_trapezoidal(fluxes, probname)
-            # print("Qes " + probname + " ", qesProb, qesProbTrap)
-            for species in range(get_num_species()):
-                qesCombined[species] += coefficient * qesProb[species]
-                qesCombinedTrap[species] += coefficient * qesProbTrap[species]
-        print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
-    else:
-        # get from curves by trapezoidal rule
-        raise NotImplementedError
+        # get combined average QoI
+        qesCombined = [0.]*get_num_species()
+        qesCombinedTrap = [0.]*get_num_species()
+        if QoI is "Q_es":  # or QoI is "Qes_ky":
+            # read from qes_results.csv
+            for component in combiScheme.itertuples(index=False):
+                probname = component.probname
+                coefficient = float(component.coefficient)
+                qesProb = get_qes_csv(qes_results, probname)
+                qesProbTrap = get_qes_trapezoidal(fluxes, probname)
+                print("Qes " + probname + " ", qesProb, qesProbTrap)
+                for species in range(get_num_species()):
+                    qesCombined[species] += coefficient * qesProb[species]
+                    qesCombinedTrap[species] += coefficient * qesProbTrap[species]
+            print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
+        else:
+            # get from curves by trapezoidal rule
+            raise NotImplementedError
         # rescale all the component fluxes
         for probname in combiScheme['probname']:
             for species in range(get_num_species()):
