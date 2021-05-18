@@ -10,7 +10,7 @@ def prolong(combiSchemeMode, newStartTime, newEndTime):
     combiScheme = get_combiScheme("", combiSchemeMode, dropzeros=True)
 
     d = 0
-    while str('l_'+str(d+1)) in combiScheme:
+    while str('l_'+str(d)) in combiScheme:
         d += 1
 
     level = [0]*d
