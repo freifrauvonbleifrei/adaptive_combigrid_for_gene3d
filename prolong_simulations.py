@@ -20,6 +20,7 @@ def prolong(combiSchemeMode, newStartTime, newEndTime):
         for dim in range(d):
             level[dim] = row[lkeys[dim]]
         # check if current simulation is finished and has run long enough
+        print("trying to prolong " + str(level))
         assert(sim_launcher.check_finished(level_vector=level))
         assert(Qes_data(level_vector=level).how_long_run() > 0.99 * newStartTime)
         # but not too long
