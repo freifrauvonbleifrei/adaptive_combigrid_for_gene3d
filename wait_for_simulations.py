@@ -11,7 +11,7 @@ def wait(combiSchemeMode, newEndTime):
     combiScheme = get_combiScheme("", combiSchemeMode, dropzeros=True)
 
     d = 0
-    while str('l_'+str(d+1)) in combiScheme.columns:
+    while str('l_'+str(d)) in combiScheme.columns:
         d += 1
     level = [0]*d
     lkeys = [str('l_'+str(dim)) for dim in range(d)]
