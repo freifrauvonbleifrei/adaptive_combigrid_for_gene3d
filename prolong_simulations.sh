@@ -1,12 +1,11 @@
 #!/bin/bash
 
+set -e
+
 if [ $# -ne 2 ]; then
     echo "You need two arguments: the new start (1) and end time (2)"
     exit 1
 fi
-
-. ./spack-sgpp/share/spack/setup-env.sh
-spack load sgpp
 
 . ./adaptation_parameters.sh
 
