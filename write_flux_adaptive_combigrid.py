@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 import h5py
+import scipy.interpolate
 
 from Qes_data import get_num_species
 
@@ -20,6 +21,23 @@ relativeRescale = os.environ.get(
     'ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION', 'True').lower() in ['true', '1']
 rollingAvgNumPoints = int(os.environ.get(
     'ADAPTATION_POSTPROCESSING_ROLLING_AVG_NUM_POINTS', '1'))
+
+
+def interpolate_1d_qty(xGene, xTango, qtyGene):
+    """Interpolate a 1D quantity from Gene radial grid to Tango radial grid.
+
+    Inputs:
+      xGene             rho_tor grid as provided by Gene (1D array)
+      xTango            rho_tor grid for Tango on which to interpolate the quantity (1D array)
+      qtyGene         quantity evaluated on Genegrid points xGene (1D array)
+
+    Outputs:
+      qtyTango          quantity interpolated onto xTango grid points (1D array)
+    """
+    interpolator = scipy.interpolate.InterpolatedUnivariateSpline(
+        xGene, qtyGene, k=1)
+    qtyTango = interpolator(xTango)
+    return qtyTango
 
 
 def get_combiScheme(prefix, mode, dropzeros=True):
