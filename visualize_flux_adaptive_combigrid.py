@@ -36,6 +36,7 @@ diagnostics_dir = './flux_diags/'
 
 diagnostics_df = pd.DataFrame(data={
     'QoI': ["Q_es","Qes_ky","Qem_ky","Ges_ky","Gem_ky", "T", "T_b", "n", "n_b"],
+    'y_axis_name' : ["Q_es ⋅ A (in MW)", "", "", "", "", "", "", "", ""],
     'diagnostics_filename': ["flux_profile_", "flux_spectra_Qes_", "flux_spectra_Qem_", "flux_spectra_Ges_", "flux_spectra_Gem_", "profile_", "profile_", "profile_", "profile_"],
     'x_axis_name' : ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
 
@@ -165,7 +166,7 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
         colors = itertools.cycle(palette)
         plot = get_figure(df["x_a"], width=width, height=height)
         plot.xaxis.axis_label = 'radial coordinate ρ_tor' if (diagnostics_df['x_axis_name'][diagnostics_index] == "x_a") else 'spectral coordinate k_y'
-        plot.yaxis.axis_label = QoI #'ion heat flux Q_es'
+        plot.yaxis.axis_label = diagnostics_df['y_axis_name'][diagnostics_index] #'ion heat flux Q_es'
         return add_to_plot(plot, df, label, color, display_legend)
 
 

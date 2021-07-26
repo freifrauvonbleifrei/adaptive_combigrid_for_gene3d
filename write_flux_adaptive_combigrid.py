@@ -91,9 +91,17 @@ def filenames_to_fluxes(flux_filenames, probnames, QoI, x_name, resample=True):
                         Q_es = f[QoI]
                     Q_es = np.array(Q_es)
                     x_a = f[x_name]
-                    SI_conv = f['SI_conv']
-                    d = {QoI: np.array(
-                        Q_es) * np.array(SI_conv), 'x_a': np.array(x_a)}
+                    # make sure that SI_conv is an array qty
+                    try:
+                        SI_conv = f['SIA_conv']
+                    except KeyError as ke:
+                        # fall back to 'SI_conf' if SIA_conf does not exist
+                        SI_conv = f['SI_conv']
+                    SI_conv = np.array(SI_conv)
+                    assert(len(SI_conv) > 1)
+                    assert(len(SI_conv) == len(Q_es))
+                    d = {QoI: np.array(Q_es), 'x_a': np.array(
+                        x_a), 'SI_conv': np.array(SI_conv)}
                     fluxes[probname][species] = pd.DataFrame(data=d)
                     # print(fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum(), fluxes[probname][species][QoI])
                     fluxes[probname][species][QoI] = fluxes[probname][species][QoI].rolling(
@@ -123,7 +131,6 @@ def filenames_to_fluxes(flux_filenames, probnames, QoI, x_name, resample=True):
                 commonIndex = pd.Float64Index(modflux.index.union(
                     Xresampled), dtype=np.float64, name=200.)
                 modflux = modflux.reindex(commonIndex)
-
                 # Interpolation technique to use. One of:
 
                 # 'linear': Ignore the index and treat the values as equally spaced. This is the only method supported on MultiIndexes.
@@ -147,12 +154,16 @@ def filenames_to_fluxes(flux_filenames, probnames, QoI, x_name, resample=True):
         return fluxes
 
 
-def get_qes_trapezoidal(fluxes, probname):
+def get_qes_trapezoidal(fluxes, probname, withSIconv=True):
     qes = [0.]*get_num_species()
     for species in range(get_num_species()):
         # print(fluxes[probname][species])
+        if withSIconv:
+            flux = fluxes[probname][species]["Q_es"] * fluxes[probname][species]["SI_conv"]
+        else:
+            flux = fluxes[probname][species]["Q_es"]
         qes[species] = np.trapz(
-            fluxes[probname][species]["Q_es"], x=fluxes[probname][species]["x_a"], axis=0)
+            flux, x=fluxes[probname][species]["x_a"], axis=0)
     return qes
 
 
