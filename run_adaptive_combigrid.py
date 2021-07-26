@@ -14,8 +14,8 @@ yIsX = environ.get('ADAPTATION_PARAM_Y_EQUALS_X', 'False').lower() in ['true', '
 if yIsX:
     assert(lmin[0]==lmin[1])
     assert(lmax[0]==lmax[1])
-lmin=lmin[1:]
-lmax=lmax[1:]
+    lmin=lmin[1:]
+    lmax=lmax[1:]
 adapt = dimadapt2d.DimensionalAdaptation(lmin, lmax, output3d=True)
 
 adapt.run_dimadapt_algorithm(int(environ.get('ADAPTATION_PARAM_MAXIMUM_NUM_GRIDS')))
