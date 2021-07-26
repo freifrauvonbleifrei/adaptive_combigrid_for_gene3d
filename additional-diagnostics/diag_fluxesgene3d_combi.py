@@ -85,7 +85,10 @@ class DiagFluxesgene3dC(Diagnostic):
             file["/x_a"] = self.run_data.spatialgrid.x_a
             file["/time"] = time_requested
             file["/SI_conv"] = self.area*self.norm_q*1E-03
-            file["/Q_es_" + spec] = averages.mytrapz(getattr(spec_flux, "Qes"), time_requested)
+            file["/SI_noA_conv"] = self.norm_q*1E+03
+            file["/Q_es_" + spec] = np.array(averages.mytrapz(getattr(spec_flux, "Qes"), time_requested))*np.array(self.run_data.pars["dens" + spec])*np.array(self.run_data.pars["temp" + spec])
+            print(np.array(self.run_data.pars["dens" + spec]))
+            print(np.array(self.run_data.pars["temp" + spec]))
             file["/G_es_" + spec] = averages.mytrapz(getattr(spec_flux, "Ges"), time_requested)
             if self.run_data.electromagnetic:
                 file["/Q_em_" + spec] = averages.mytrapz(getattr(spec_flux, "Qem"), time_requested)
