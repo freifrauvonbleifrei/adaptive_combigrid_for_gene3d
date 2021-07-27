@@ -201,12 +201,16 @@ def get_combi_flux(fluxes, combiScheme, QoI, x):
     # print(len(fluxes))
     combi_flux = []
     for species in range(get_num_species()):
-        combi_flux_species = [fluxes[combiScheme.loc[x]['probname']][species]
+        combi_flux_species_list = [fluxes[combiScheme.loc[x]['probname']][species]
                               [QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
+        combi_si_conv_list = [fluxes[combiScheme.loc[x]['probname']][species]
+                              ["SI_conv"] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
         combi_flux_species = pd.DataFrame(
-            data=combi_flux_species).sum()
+            data=combi_flux_species_list).sum()
+        combi_si_conv = pd.DataFrame(
+            data=combi_si_conv_list).sum()
         combi_flux_species = pd.DataFrame(
-            data={QoI: combi_flux_species, 'x_a': x})
+            data={QoI: combi_flux_species, 'x_a': x, 'SI_conv': combi_si_conv})
         combi_flux.append(combi_flux_species)
     return combi_flux
 
@@ -226,8 +230,8 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         combiScheme = get_combiScheme(
             prob_prefix, combiSchemeMode, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
 
-        qes_results = pd.read_csv(os.environ.get(
-            'ADAPTATION_RESULTS_CSV'), index_col=0)
+        csv_name =os.environ.get('ADAPTATION_RESULTS_CSV')
+        qes_results = pd.read_csv(csv_name, index_col=0)
         printnan(qes_results)
 
         # try printing the computational costs for running the full scheme (including the zero-coefficient grids)
@@ -300,17 +304,40 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
             c[QoI].clip(lower=0., inplace=True)
 
         # write out combined flux as h5 and .txt data
-        combi_filename_begin = "./" + QoI + \
-            "_" + combiSchemeMode[:-4] + "_Combi_"
-        with h5py.File(combi_filename_begin + "ions.h5",  "w") as f:
-            f.create_dataset('x_a', data=combi_flux[0]['x_a'])
-            f.create_dataset(QoI, data=combi_flux[0][QoI])
-        np.savetxt(combi_filename_begin + "ions.txt", combi_flux[0])
-        if get_num_species() > 1:
-            with h5py.File(combi_filename_begin + "electrons.h5",  "w") as f:
-                f.create_dataset('x_a', data=combi_flux[1]['x_a'])
-                f.create_dataset(QoI, data=combi_flux[1][QoI])
-            np.savetxt(combi_filename_begin + "electrons.txt", combi_flux[1])
+        #combi_filename_begin = "./" + QoI + \
+        #    "_" + combiSchemeMode[:-4] + "_Combi_"
+        #with h5py.File(combi_filename_begin + "ions.h5",  "w") as f:
+        #    f.create_dataset('x_a', data=combi_flux[0]['x_a'])
+        #    f.create_dataset(QoI, data=combi_flux[0][QoI])
+        # #Do the same for electrons
+        # if get_num_species() > 1:
+        #     with h5py.File(combi_filename_begin + "electrons.h5",  "w") as f:
+        #         f.create_dataset('x_a', data=combi_flux[1]['x_a'])
+        #         f.create_dataset(QoI, data=combi_flux[1][QoI])
+        #     np.savetxt(combi_filename_begin + "electrons.txt", combi_flux[1])
+
+        #ABN
+        with h5py.File('./flux_diags/flux_profile_ions_prob_5_5_5_5_3.h5','r') as hf:
+            try:
+                SIA_conv_file      = np.array(hf.get('/SIA_conv')).T
+                SI_conv            = np.array(hf.get('/SI_conv')).T
+            except KeyError as ke:
+                # fall back to 'SI_conf' if SIA_conf does not exist
+                print(hf.get('/SI_conv'))
+                SIA_conv_file      = np.array(hf.get('/SI_conv')).T
+                SI_conv            = np.array(hf.get('/SI_noA_conv')).T
+            assert(not isinstance(SI_conv, list))
+            x_a_file           = np.array(hf.get('/x_a')).T
+
+        # make sure ABN's way of getting SI_conv is the same as re-using it
+        # print(SIA_conv_file, combi_flux[0]["SI_conv"])
+        SIA_conv = interpolate_1d_qty(x_a_file, np.array(combi_flux[0]['x_a']), SIA_conv_file)
+        print(SIA_conv, len(SIA_conv), combi_flux[0]["SI_conv"])
+
+        np.savetxt("heat_flux_ions.txt",np.c_[combi_flux[0]['x_a'],combi_flux[0][QoI]])
+        np.savetxt("heat_flux_ions_" +  str(startTimeForAverage) + "_" + str(endTimeForAverage) + ".txt",np.c_[combi_flux[0]['x_a'],combi_flux[0][QoI],combi_flux[0][QoI]*combi_flux[0]['SI_conv']])
+        np.savetxt("heat_flux_seed_ions", np.c_[combi_flux[0]['x_a'],combi_flux[0][QoI]*SI_conv])
+
 
 
 if __name__ == "__main__":
