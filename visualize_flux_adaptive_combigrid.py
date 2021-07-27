@@ -36,7 +36,7 @@ diagnostics_dir = './flux_diags/'
 
 diagnostics_df = pd.DataFrame(data={
     'QoI': ["Q_es","Qes_ky","Qem_ky","Ges_ky","Gem_ky", "T", "T_b", "n", "n_b"],
-    'y_axis_name' : ["Q_es ⋅ A (in MW)", "", "", "", "", "", "", "", ""],
+    'y_axis_name' : ["Q","Qes_ky","Qem_ky","Ges_ky","Gem_ky", "T", "T_b", "n", "n_b"],
     'diagnostics_filename': ["flux_profile_", "flux_spectra_Qes_", "flux_spectra_Qem_", "flux_spectra_Ges_", "flux_spectra_Gem_", "profile_", "profile_", "profile_", "profile_"],
     'x_axis_name' : ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
 
