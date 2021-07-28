@@ -262,6 +262,7 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
             [diagnostics_index])
 
         if relativeRescale:
+            powerNormalization = True
             # get combined average QoI
             qesCombined = [0.]*get_num_species()
             qesCombinedTrap = [0.]*get_num_species()
@@ -271,7 +272,8 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
                     probname = component.probname
                     coefficient = float(component.coefficient)
                     qesProb = get_qes_csv(qes_results, probname)
-                    qesProbTrap = get_qes_trapezoidal(fluxes, probname)
+                    qesProbTrap = get_qes_trapezoidal(
+                        fluxes, probname, withSIconv=powerNormalization)
                     print("Qes " + probname + " ", qesProb, qesProbTrap)
                     for species in range(get_num_species()):
                         qesCombined[species] += coefficient * qesProb[species]
@@ -288,7 +290,8 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
                     csvRescaleFactor = qesCombined[species] / \
                         get_qes_csv(qes_results, probname)[species]
                     trapRescaleFactor = qesCombinedTrap[species] / \
-                        get_qes_trapezoidal(fluxes, probname)[species]
+                        get_qes_trapezoidal(
+                            fluxes, probname, withSIconv=powerNormalization)[species]
                     if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
                         print("different rescaling relations! ",
                               csvRescaleFactor, trapRescaleFactor)

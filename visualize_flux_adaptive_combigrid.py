@@ -91,6 +91,7 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
         diagnostics_df['x_axis_name'][diagnostics_index])
 
     if relativeRescale:
+        powerNormalization=True
         # get combined average QoI
         qesCombined = [0.]*get_num_species()
         qesCombinedTrap = [0.]*get_num_species()
@@ -100,11 +101,13 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
                 probname = component.probname
                 coefficient = float(component.coefficient)
                 qesProb = get_qes_csv(qes_results, probname)
-                qesProbTrap = get_qes_trapezoidal(fluxes, probname)
+                qesProbTrap = get_qes_trapezoidal(
+                    fluxes, probname, withSIconv=powerNormalization)
                 print("Qes " + probname + " ", qesProb, qesProbTrap)
                 for species in range(get_num_species()):
                     qesCombined[species] += coefficient * qesProb[species]
-                    qesCombinedTrap[species] += coefficient * qesProbTrap[species]
+                    qesCombinedTrap[species] += coefficient * \
+                        qesProbTrap[species]
             print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
         else:
             # get from curves by trapezoidal rule
@@ -116,7 +119,8 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
                 csvRescaleFactor = qesCombined[species] / \
                     get_qes_csv(qes_results, probname)[species]
                 trapRescaleFactor = qesCombinedTrap[species] / \
-                    get_qes_trapezoidal(fluxes, probname)[species]
+                    get_qes_trapezoidal(
+                        fluxes, probname, withSIconv=powerNormalization)[species]
                 if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
                     print("different rescaling relations! ",
                           csvRescaleFactor, trapRescaleFactor)
