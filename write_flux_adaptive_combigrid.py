@@ -89,6 +89,9 @@ def get_filenames(probname, diagnostics_filename):
                    str(x) + '.h5'] for x in probname]
     return fnames
 
+def csv_to_flux(flux_filename, column_names):
+    flux = pd.read_table(flux_filename, sep="\s+",header=None,names=column_names)
+    return flux
 
 def filenames_to_fluxes(flux_filenames, probnames, QoI, x_name, resample=True):
     fluxes = {}

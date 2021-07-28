@@ -181,14 +181,11 @@ for diagnostics_index in [0]: #range(len(diagnostics_df)):
     svgSuffix = "_" + ("relative" if relativeRescale else "absolute") + "_" + str(rollingAvgNumPoints) + ".svg"
 
     # # plot reference results (here diagnostics are appended with "2mw")
-    # filenames_ref = get_filenames(['2mw'], diagnostics_filename)
+        # filenames_ref = get_filenames(['1mw'], diagnostics_filename)
     # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"], QoI,
     #     diagnostics_df['x_axis_name'][diagnostics_index])
-    # plot_ref = get_plot(fluxes_ref["ref"][0], label="reference ions", display_legend=True, width=1400)
-    # if get_num_species() > 1:
-    #     plot_ref = add_to_plot(plot_ref, fluxes_ref["ref"][1], label="reference electrons", display_legend=True)
-    # plot_ref.output_backend = "svg"
-    # export_svgs([plot_ref], filename=QoI + "_ref" + svgSuffix)
+        # fluxes_ref = fluxes_ref["ref"]
+        # fluxes_ref = [csv_to_flux("heat_flux_seed_ions_converged", ['x_a', "", QoI])]
 
 
     # In[10]:
