@@ -167,11 +167,11 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
                 q = plot.line("x_a", QoI+"A", color=color, source=source)
         else:
             # print("plot is not multiplied by area!")
-        if bokeh_version > "2.":
+            if bokeh_version > "2.":
                 q = plot.line("x_a", QoI, color=color,
                               source=source, legend_label=label)
-        else:
-            q = plot.line("x_a", QoI, color=color, source=source)
+            else:
+                q = plot.line("x_a", QoI, color=color, source=source)
         plot.add_tools(HoverTool(renderers=[q], tooltips=[("", label)]))
         if display_legend and bokeh_version < "2.":
             legend = Legend(items=[
@@ -183,7 +183,7 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
     def get_plot(df, label=None, color=None, display_legend=False, width=None, height=None, timesArea=False, timesAreaLabel=False):
         if timesArea:
             timesAreaLabel = True
-        global colors 
+        global colors
         colors = itertools.cycle(palette)
         plot = get_figure(df["x_a"], width=width, height=height)
         plot.xaxis.axis_label = 'radial coordinate ρ_tor' if (
@@ -226,19 +226,19 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         #     plot_ref.output_backend = "svg"
         #     export_svgs([plot_ref], filename=QoI + "_ref" + svgSuffix)
 
-    # In[10]:
+        # In[10]:
 
         plot_combi = get_plot(combi_flux[0], label="combi ions", display_legend=True,
                               width=1400, color="black", timesArea=plot_multiplied_by_area)
-    if get_num_species() > 1:
+        if get_num_species() > 1:
             plot_combi = add_to_plot(plot_combi, combi_flux[1], label="combi electrons",
                                      display_legend=True, color="black", timesArea=plot_multiplied_by_area)
-    plot_combi.output_backend = "svg"
+        plot_combi.output_backend = "svg"
         export_svgs([plot_combi], filename=QoI + "_" +
                     combiSchemeMode[:-4] + "Combi" + svgSuffix)
-    # export_png(plot_combi, filename=QoI + "_" + combiSchemeMode[:-4] + "Combi.png")
-    # output_notebook()
-    # show(plot_combi)
+        # export_png(plot_combi, filename=QoI + "_" + combiSchemeMode[:-4] + "Combi.png")
+        # output_notebook()
+        # show(plot_combi)
 
         # if do_plot_ref:
         #     # have reference and combi plot in one
@@ -250,63 +250,63 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         #     export_svgs([plot_combi], filename=QoI + "_" +
         #                 combiSchemeMode[:-4] + "Combi_and_ref" + svgSuffix)
 
-    # # add "best" component to plot
+        # # add "best" component to plot
         # best_component = "prob_8_8_5_5_3"
-    # filenames_best = get_filenames([best_component], diagnostics_filename)
-    # fluxes_best, _ = filenames_to_fluxes(filenames_best, [best_component], QoI,
+        # filenames_best = get_filenames([best_component], diagnostics_filename)
+        # fluxes_best, _ = filenames_to_fluxes(filenames_best, [best_component], QoI,
         #                                      diagnostics_df['x_axis_name'][diagnostics_index])
         # plot_combi = add_to_plot(plot_combi, fluxes_best[best_component][0], label=best_component,
         #                          display_legend=True, color="grey", timesArea=plot_multiplied_by_area)
-    # if get_num_species() > 1:
+        # if get_num_species() > 1:
         #     plot_combi = add_to_plot(plot_combi, fluxes_best[best_component][1], label=best_component,
         #                              display_legend=True, color="grey", timesArea=plot_multiplied_by_area)
         # export_svgs([plot_combi], filename=QoI + "_" +
         #             combiSchemeMode[:-4] + "Combi_and_best" + svgSuffix)
 
-    # In[11]:
+        # In[11]:
 
-    # fluxes_multiplied_with_coefficient = {}
-    # multiplyWithCoefficient = True
+        # fluxes_multiplied_with_coefficient = {}
+        # multiplyWithCoefficient = True
 
-    # for i in range(len(fluxes)):
-    #     probname = combiScheme.iloc[i]['probname']
-    #     fluxes_multiplied_with_coefficient[probname] = {}
-    #     for species in range(get_num_species()):
-    #         fluxes_multiplied_with_coefficient[probname][species] = fluxes[probname][species].copy()
-    #         if multiplyWithCoefficient:
-    #             fluxes_multiplied_with_coefficient[probname][species][QoI] = fluxes[probname][species][QoI] * combiScheme.iloc[i]['coefficient']
+        # for i in range(len(fluxes)):
+        #     probname = combiScheme.iloc[i]['probname']
+        #     fluxes_multiplied_with_coefficient[probname] = {}
+        #     for species in range(get_num_species()):
+        #         fluxes_multiplied_with_coefficient[probname][species] = fluxes[probname][species].copy()
+        #         if multiplyWithCoefficient:
+        #             fluxes_multiplied_with_coefficient[probname][species][QoI] = fluxes[probname][species][QoI] * combiScheme.iloc[i]['coefficient']
 
-    # plot_scheme_mult_in_one = get_plot( fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]['probname']+" ions")
-    # if get_num_species() > 1:
-    #     plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][1],label=combiScheme.iloc[0]['probname']+" electrons")
-    # for i in range(len(combiScheme[1:])):
-    #     plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][0], label=combiScheme.iloc[i+1]['probname']+" ions")
-    #     if get_num_species() > 1:
-    #         plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
+        # plot_scheme_mult_in_one = get_plot( fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]['probname']+" ions")
+        # if get_num_species() > 1:
+        #     plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[0]['probname']][1],label=combiScheme.iloc[0]['probname']+" electrons")
+        # for i in range(len(combiScheme[1:])):
+        #     plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][0], label=combiScheme.iloc[i+1]['probname']+" ions")
+        #     if get_num_species() > 1:
+        #         plot_scheme_mult_in_one = add_to_plot(plot_scheme_mult_in_one, fluxes_multiplied_with_coefficient[combiScheme.iloc[i+1]['probname']][1], label=combiScheme.iloc[i+1]['probname']+" electrons")
 
-    # # In[12]:
+        # # In[12]:
 
-    # # grid = gridplot((plots)+[plot_combi,], ncols=2)
-    # #don übereinander plotten, auch mit Koeffizienten multipliziert
-    # #DONE alle verfügbaren Gitter einbeziehen
-    # #TODO adaption durch l2-unterschied im Flux (oder höhe oder lage des Maximums)
-    # plot_scheme_mult_in_one.output_backend = "svg"
-    # export_svgs([plot_scheme_mult_in_one], filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients" + svgSuffix)
-    # # export_png(plot_scheme_mult_in_one, filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.png")
-    # output_notebook()
-    # show(plot_scheme_mult_in_one)
+        # # grid = gridplot((plots)+[plot_combi,], ncols=2)
+        # #don übereinander plotten, auch mit Koeffizienten multipliziert
+        # #DONE alle verfügbaren Gitter einbeziehen
+        # #TODO adaption durch l2-unterschied im Flux (oder höhe oder lage des Maximums)
+        # plot_scheme_mult_in_one.output_backend = "svg"
+        # export_svgs([plot_scheme_mult_in_one], filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients" + svgSuffix)
+        # # export_png(plot_scheme_mult_in_one, filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOneMultipliedWithCoefficients.png")
+        # output_notebook()
+        # show(plot_scheme_mult_in_one)
 
-    # In[13]:
+        # In[13]:
 
         plot_scheme_in_one = get_plot(fluxes[combiScheme.iloc[0]['probname']][0], label=combiScheme.iloc[0]
                                       ['probname']+" ions", display_legend=True, timesArea=plot_multiplied_by_area)
-    if get_num_species() > 1:
+        if get_num_species() > 1:
             plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[0]['probname']][1],
                                              label=combiScheme.iloc[0]['probname']+" electrons", display_legend=True, timesArea=plot_multiplied_by_area)
-    for i in range(len(combiScheme[1:])):
+        for i in range(len(combiScheme[1:])):
             plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']]
                                              [0], label=combiScheme.iloc[i+1]['probname']+" ions", timesArea=plot_multiplied_by_area)
-        if get_num_species() > 1:
+            if get_num_species() > 1:
                 plot_scheme_in_one = add_to_plot(plot_scheme_in_one, fluxes[combiScheme.iloc[i+1]['probname']]
                                                  [1], label=combiScheme.iloc[i+1]['probname']+" electrons", timesArea=plot_multiplied_by_area)
         plot_scheme_in_one.output_backend = "svg"
@@ -315,7 +315,7 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
 
         plot_scheme_in_one = add_to_plot(
             plot_scheme_in_one, combi_flux[0], label="combi ions", color="black", timesArea=plot_multiplied_by_area)
-    if get_num_species() > 1:
+        if get_num_species() > 1:
             plot_scheme_in_one = add_to_plot(
                 plot_scheme_in_one, combi_flux[1], label="combi electrons", color="black", timesArea=plot_multiplied_by_area)
 
@@ -327,14 +327,14 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         #         plot_scheme_in_one = add_to_plot(
         #             plot_scheme_in_one, fluxes_ref[1], label="reference electrons", display_legend=True, color="pink", timesArea=do_multiply_ref)
 
-    plot_scheme_in_one.output_backend = "svg"
+        plot_scheme_in_one.output_backend = "svg"
         export_svgs([plot_scheme_in_one], filename=QoI + "_" +
                     combiSchemeMode[:-4] + "AllInOne" + svgSuffix)
-    # export_png(plot_scheme_in_one, filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOne.png")
-    output_notebook()
-    show(plot_scheme_in_one)
+        # export_png(plot_scheme_in_one, filename=QoI + "_" + combiSchemeMode[:-4] + "AllInOne.png")
+        output_notebook()
+        show(plot_scheme_in_one)
 
-    # In[14]:
-    # plots = [get_plot(fluxes[combiScheme.loc[i]['probname']][s], label=combiScheme.iloc[i]['probname']+str(s), color = 'orange' if combiScheme.iloc[i]['coefficient'] > 0 else 'blue', display_legend=True)for s in [0,1] for i in range(len(fluxes))]
-    # output_notebook()
-    # show(gridplot([plots]))
+        # In[14]:
+        # plots = [get_plot(fluxes[combiScheme.loc[i]['probname']][s], label=combiScheme.iloc[i]['probname']+str(s), color = 'orange' if combiScheme.iloc[i]['coefficient'] > 0 else 'blue', display_legend=True)for s in [0,1] for i in range(len(fluxes))]
+        # output_notebook()
+        # show(gridplot([plots]))
