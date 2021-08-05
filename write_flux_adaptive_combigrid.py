@@ -331,27 +331,31 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         with h5py.File('./flux_diags/flux_profile_ions_prob_5_5_5_5_3.h5', 'r') as hf:
             try:
                 SIA_conv_file = np.array(hf.get('/SIA_conv')).T
-                SI_conv = np.array(hf.get('/SI_conv')).T
+                SI_noA_conv = np.array(hf.get('/SI_conv')).T
             except KeyError as ke:
                 # fall back to 'SI_conf' if SIA_conf does not exist
                 print(hf.get('/SI_conv'))
                 SIA_conv_file = np.array(hf.get('/SI_conv')).T
-                SI_conv = np.array(hf.get('/SI_noA_conv')).T
-            assert(not isinstance(SI_conv, list))
+                SI_noA_conv = np.array(hf.get('/SI_noA_conv')).T
+            assert(not isinstance(SI_noA_conv, list))
             x_a_file = np.array(hf.get('/x_a')).T
 
-        # make sure ABN's way of getting SI_conv is the same as re-using it
-        # print(SIA_conv_file, combi_flux[0]["SI_conv"])
-        SIA_conv = interpolate_1d_qty(x_a_file, np.array(
-            combi_flux[0]['x_a']), SIA_conv_file)
-        print(SIA_conv, len(SIA_conv), combi_flux[0]["SI_conv"])
+        try:
+            # # make sure ABN's way of getting SI_conv is the same as re-using it
+            # # print(SIA_conv_file, combi_flux[0]["SI_conv"])
+            SIA_conv = interpolate_1d_qty(x_a_file, np.array(
+                combi_flux[0]['x_a']), SIA_conv_file)
+            print(SIA_conv, len(SIA_conv), combi_flux[0]["SI_conv"])
+        except:
+            print("could not compare ABN's SI calculation")
+            pass
 
         np.savetxt("heat_flux_ions.txt", np.c_[
                    combi_flux[0]['x_a'], combi_flux[0][QoI]])
         np.savetxt("heat_flux_ions_" + str(startTimeForAverage) + "_" + str(endTimeForAverage) + ".txt",
                    np.c_[combi_flux[0]['x_a'], combi_flux[0][QoI], combi_flux[0][QoI]*combi_flux[0]['SI_conv']])
         np.savetxt("heat_flux_seed_ions", np.c_[
-                   combi_flux[0]['x_a'], combi_flux[0][QoI]*SI_conv])
+                   combi_flux[0]['x_a'], combi_flux[0][QoI]*SI_noA_conv])
 
 
 if __name__ == "__main__":
