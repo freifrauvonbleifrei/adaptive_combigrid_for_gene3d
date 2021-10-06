@@ -5,7 +5,7 @@ import pandas as pd
 import math
 # import kinds
 
-# this needs `spack load sgpp@adaptive_combigrid_convenience` 
+# this needs `spack load sgpp@adaptive_combigrid_convenience`
 import pysgpp
 
 import Qes_data
@@ -48,12 +48,13 @@ class DimensionalAdaptation:
     def __init__(self, lmin, lmax, omega=1., \
                 prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'),\
                 gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'),\
-                output3d=False):
+                output3d=False, skiplevels=[]):
         self.prob_prepath=prob_prepath
         self.gene_path=gene_path
         self.output3d=output3d
         self.lmin=lmin
         self.lmax=lmax
+        self.skiplevels=skiplevels
         self.num_species=Qes_data.get_num_species()
         self.minimum_time_length=float(os.environ.get('ADAPTATION_PARAM_MIN_RUNTIME'))
         #self.minimum_time_length=500
@@ -63,6 +64,8 @@ class DimensionalAdaptation:
         #self.minimum_nwin=3
 
         dim = len(lmin)
+        for skiplevel in skiplevels:
+            assert(len(skiplevel) == dim)
         lmin = pysgpp.LevelVector(lmin)
         levels = pysgpp.LevelVectorVector(1,lmin)
         weightedRelevanceCalculator=pysgpp.WeightedRelevanceCalculator(omega)
@@ -71,15 +74,15 @@ class DimensionalAdaptation:
         self.adaptiveGeneratorIons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
         if self.num_species > 1:
             self.adaptiveGeneratorElectrons = pysgpp.AdaptiveCombinationGridGenerator(levels)#, weightedRelevanceCalculator)
-        
+
         # set start results
-        qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(lmin))
+        qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(lmin), skiplevels=self.skiplevels)
         result = qes_data.get_result()
         sgppActiveLevelVector=pysgpp.LevelVector(lmin)
         self.adaptiveGeneratorIons.setQoIInformation(sgppActiveLevelVector, result[0])
         if self.num_species > 1:
             self.adaptiveGeneratorElectrons.setQoIInformation(sgppActiveLevelVector, result[1])
-        
+
         #same for SEMs
         sem = qes_data.get_time_error()
         self.adaptiveSEMIons = pysgpp.AdaptiveCombinationGridGenerator.fromFunctionPointer(levels, \
@@ -137,17 +140,17 @@ class DimensionalAdaptation:
                 waitingForNumberOfResults < 10 and \
                 ~(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0):
             waitingForResults=True
-            waitingForNumberOfResults=0            
+            waitingForNumberOfResults=0
 
             # iterate the whole active set
             for activeLevelVector in self.adaptiveGeneratorIons.getActiveSet():
                 #print(activeLevelVector, waitingForNumberOfResults)
                 #print(not (self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))))
-                # store QoI information if we have not done it already 
-                
+                # store QoI information if we have not done it already
+
                 if (not self.adaptiveGeneratorIons.hasQoIInformation(pysgpp.LevelVector(activeLevelVector))):
                     print(activeLevelVector, waitingForNumberOfResults)
-                    qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(activeLevelVector))
+                    qes_data = Qes_data.Qes_data(sim_launcher.l_vec_longer(activeLevelVector), skiplevels=self.skiplevels)
                     result = qes_data.get_result()
     #                result = [0.3,0.3]
                     if result:
@@ -166,21 +169,22 @@ class DimensionalAdaptation:
                             deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(sgppActiveLevelVector)
                             delta = [deltaIons, deltaElectrons]
                         print("has values: " + get_results_string(result, sem))
-                        qes_data.set_delta_to_csv(delta)
-                        if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
-                        #prolong simulation
-                            if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
-                                if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
-                                    # restart the simulation
-                                    print("sim_launcher: restart "+str(activeLevelVector))
-                                    sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector)
-                        elif any([sem[i] > 0.1 * result[i] for i in range(len(sem))]):
-                        #prolong simulation
-                            if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
-                                if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
-                                    # restart the simulation
-                                    print("sim_launcher: restart because of SEM "+str(activeLevelVector))
-                                    sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector, qes_data.how_long_run() + 2 * self.minimum_time_length)
+                        if (result[0] < math.inf):
+                            qes_data.set_delta_to_csv(delta)
+                            if ((qes_data.how_long_run() < self.minimum_time_length) or qes_data.how_many_nwin_run() < self.minimum_nwin):
+                            #prolong simulation
+                                if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
+                                    if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
+                                        # restart the simulation
+                                        print("sim_launcher: restart "+str(activeLevelVector))
+                                        sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector)
+                            elif any([sem[i] > 0.1 * result[i] for i in range(len(sem))]):
+                            #prolong simulation
+                                if sim_launcher.check_folder_exists(self.prob_prepath, activeLevelVector):
+                                    if sim_launcher.check_finished(self.prob_prepath, activeLevelVector):
+                                        # restart the simulation
+                                        print("sim_launcher: restart because of SEM "+str(activeLevelVector))
+                                        sim_launcher.restart_sim(self.prob_prepath, self.gene_path, activeLevelVector, qes_data.how_long_run() + 2 * self.minimum_time_length)
 
                     else:
                         # start or prolong simulations
@@ -202,7 +206,7 @@ class DimensionalAdaptation:
                                 print("sim_launcher: start "+str(activeLevelVector))
                                 sim_launcher.dispatch_to_run(self.prob_prepath, activeLevelVector, self.gene_path)
                         waitingForNumberOfResults+=1
-                else: 
+                else:
                     waitingForResults=False
             if not waitingForResults:
                 # adapt to the next best level: the one with the most relative change
@@ -210,7 +214,7 @@ class DimensionalAdaptation:
                 currentIons = self.adaptiveGeneratorIons.getCurrentResult()
                 if self.num_species > 1:
                     currentElectrons = self.adaptiveGeneratorElectrons.getCurrentResult()
-                
+
                 # identify the next most relevant levels
                 # try the "relative" criterion: the delta is divided by the level's own result
                 # parse shell boolean cf https://stackoverflow.com/questions/63116419/evaluate-boolean-environment-variable-in-python
@@ -229,7 +233,7 @@ class DimensionalAdaptation:
                                 currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
                                 levelIons = pysgppActiveLevelVector
                 deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)
-                
+
                 if self.num_species > 1:
                     levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
                     if relativeAdaptationCriterion:
@@ -244,7 +248,7 @@ class DimensionalAdaptation:
                                     currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
                                     levelElectrons = activeLevelVector
                     deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)
-                
+
                 #print(list(i for i in levelElectrons),list(i for i in levelIons))
                 #print(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet())
                 #print(self.adaptiveGeneratorIons.getRelevanceOfActiveSet())
@@ -269,7 +273,7 @@ class DimensionalAdaptation:
                           + self.get_results_string() )
                     #print(len(self.adaptiveGeneratorElectrons.getOldSet()), \
                     #      len(self.adaptiveGeneratorElectrons.getRelevanceOfActiveSet()))
-        
+
                     # update totalSEM and absAdaptedDelta to check the termination criterion
                     if adaptedByElectrons:
                         totalSEM=self.adaptiveSEMElectrons.getCurrentResult()
@@ -281,7 +285,7 @@ class DimensionalAdaptation:
                 except RuntimeError:
                     # means that smaller-level results are missing
                     pass
-                    
+
         print(len(self.adaptiveGeneratorIons.getOldSet()) < numGrids, (totalSEM < absAdaptedDelta), \
                 not waitingForResults, waitingForNumberOfResults < 10, \
                 not(len(self.adaptiveGeneratorIons.getRelevanceOfActiveSet()) == 0))
@@ -300,7 +304,7 @@ class DimensionalAdaptation:
         except RuntimeError:
             # means that smaller-level results are missing
             pass
-        
+
         oldSet = self.adaptiveGeneratorIons.getOldSet()
         print("adapted levels: " + thingToString(oldSet))
         self.adaptiveGeneratorIons.adaptAllKnown()
@@ -308,10 +312,10 @@ class DimensionalAdaptation:
 
         oldCoefficients = pysgpp.getStandardCoefficientsFromLevelSet(oldSet)
         allCoefficients = pysgpp.getStandardCoefficientsFromLevelSet(activeAndOldSet)
-        
+
         schemeToCSV(thingToList(oldSet), thingToList(oldCoefficients), 'oldSet.csv')
         schemeToCSV(thingToList(activeAndOldSet), thingToList(allCoefficients), 'allSet.csv')
-        
+
         if (self.output3d):
             try:
                 # cf. https://stackoverflow.com/questions/1482308/how-to-get-all-subsets-of-a-set-powerset

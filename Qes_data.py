@@ -120,7 +120,7 @@ def get_time_error(frame, printOutput=False, autocorr_time=None):
 class Qes_data:
     def __init__(self, level_vector, \
             prob_prepath=os.environ.get('ADAPTATION_PROB_PATH'),\
-            gene_path=os.environ.get('ADAPTATION_GENE3D_PATH')):
+            gene_path=os.environ.get('ADAPTATION_GENE3D_PATH'), skiplevels=[]):
         self.gene_path = gene_path
         if ~(gene_path == None):
             assert os.path.isdir(gene_path)
@@ -129,6 +129,7 @@ class Qes_data:
         self.frame = None
         self.crop_time = float(os.environ.get('ADAPTATION_PARAM_CROP_TIME'))
         self.results_csv = os.environ.get('ADAPTATION_RESULTS_CSV')
+        self.skiplevels=skiplevels
 
     def set_csv(self, delta=None):
         return self.set_result_to_csv(self.get_result(), self.frame.time.iloc[0],
@@ -287,6 +288,12 @@ class Qes_data:
             return 0
 
     def get_result(self, up_to_time=None):
+        if self.level_vector in self.skiplevels:
+            if get_num_species() == 2:
+                result = (math.inf, math.inf)
+            elif get_num_species() == 1:
+                result = (math.inf)
+
         if self.gene_path is None:
             result = self.get_from_csv()
             if result is not None:
