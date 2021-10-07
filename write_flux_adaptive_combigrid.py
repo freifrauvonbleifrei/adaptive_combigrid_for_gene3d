@@ -40,13 +40,14 @@ def interpolate_1d_qty(xGene, xTango, qtyGene):
     return qtyTango
 
 
-def get_combiScheme(prefix, mode, dropzeros=True):
+def get_combiScheme(prefix, mode, dropzeros=True, sumIsOne=True):
     combiScheme = pd.read_csv(prefix+mode, index_col=0)
     if dropzeros:
         combiScheme = combiScheme[combiScheme['coefficient'] != 0].reset_index(
             drop=True)
 #   combiScheme = combiScheme[1:].reset_index(drop=True)
-    assert(abs(combiScheme['coefficient'].sum() - 1) < 1e-6)
+    if sumIsOne:
+        assert(abs(combiScheme['coefficient'].sum() - 1) < 1e-6)
     return combiScheme
 
 
@@ -116,16 +117,20 @@ def filenames_to_fluxes(flux_filenames, probnames, QoI, x_name, resample=True):
                     Q_es = np.array(Q_es)
                     x_a = f[x_name]
                     # make sure that SI_conv is an array qty
-                    try:
-                        SI_conv = f['SIA_conv']
-                    except KeyError as ke:
-                        # fall back to 'SI_conf' if SIA_conf does not exist
-                        SI_conv = f['SI_conv']
-                    SI_conv = np.array(SI_conv)
-                    assert(len(SI_conv) > 1)
-                    assert(len(SI_conv) == len(Q_es))
-                    d = {QoI: np.array(Q_es), 'x_a': np.array(
-                        x_a), 'SI_conv': np.array(SI_conv)}
+                    if (QoI == 'Q_es'):
+                        try:
+                            SI_conv = f['SIA_conv']
+                        except KeyError as ke:
+                            # fall back to 'SI_conf' if SIA_conf does not exist
+                            SI_conv = f['SI_conv']
+                        SI_conv = np.array(SI_conv)
+                        assert(len(SI_conv) > 1)
+                        assert(len(SI_conv) == len(Q_es))
+                        d = {QoI: np.array(Q_es), 'x_a': np.array(
+                            x_a), 'SI_conv': np.array(SI_conv)}
+                    else:
+                        d = {QoI: np.array(Q_es), 'x_a': np.array(
+                            x_a)}
                     fluxes[probname][species] = pd.DataFrame(data=d)
                     # print(fluxes[probname][species][QoI].rolling(window=rollingAvgNumPoints, center=True).sum(), fluxes[probname][species][QoI])
                     fluxes[probname][species][QoI] = fluxes[probname][species][QoI].rolling(
@@ -235,11 +240,15 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         prob_prefix = ''
 
         combiScheme = get_combiScheme(
-            prob_prefix, combiSchemeMode, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
+            prob_prefix, combiSchemeMode, dropzeros=True, sumIsOne=True)
 
         csv_name = os.environ.get('ADAPTATION_RESULTS_CSV')
         qes_results = pd.read_csv(csv_name, index_col=0)
         printnan(qes_results)
+
+        if (QoI == "Q_es") and relativeRescale:
+            rescaledCombiScheme = combiScheme.copy()
+            rescaledCombiScheme['rescaleFactor']=rescaledCombiScheme['coefficient']
 
         # try printing the computational costs for running the full scheme (including the zero-coefficient grids)
         try:
@@ -271,10 +280,11 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
 
         if relativeRescale:
             powerNormalization = True
-            # get combined average QoI
-            qesCombined = [0.]*get_num_species()
-            qesCombinedTrap = [0.]*get_num_species()
+            rescalingCsvName = prob_prefix + "rescaled_" + combiSchemeMode
             if QoI is "Q_es":  # or QoI is "Qes_ky":
+                # get combined average QoI
+                qesCombined = [0.]*get_num_species()
+                qesCombinedTrap = [0.]*get_num_species()
                 # read from qes_results.csv
                 for component in combiScheme.itertuples(index=False):
                     probname = component.probname
@@ -288,24 +298,43 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
                         qesCombinedTrap[species] += coefficient * \
                             qesProbTrap[species]
                 print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
+                # rescale all the component fluxes
+                for i in range(len(combiScheme['probname'])):
+                    probname = combiScheme['probname'][i]
+                    for species in range(get_num_species()):
+                        print("rescaling ", probname, species)
+                        csvRescaleFactor = qesCombined[species] / \
+                            get_qes_csv(qes_results, probname)[species]
+                        trapRescaleFactor = qesCombinedTrap[species] / \
+                            get_qes_trapezoidal(
+                                fluxes, probname, withSIconv=powerNormalization)[species]
+                        if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
+                            print("different rescaling relations! ",
+                                csvRescaleFactor, trapRescaleFactor)
+                        for q in range(len(fluxes[probname][species][QoI])):
+                            # fluxes[probname][species][QoI][q] *= csvRescaleFactor
+                            fluxes[probname][species][QoI][q] *= trapRescaleFactor
+                        # store the rescaling factors
+                        if species == 0:
+                            assert(rescaledCombiScheme['probname'][i] == probname)
+                            # assert (get_num_species() == 1)
+                            #todo think of how to deal with two different rescaling factors from two species??
+                            rescaledCombiScheme['coefficient'][i] *= trapRescaleFactor
+                            rescaledCombiScheme['rescaleFactor'][i] = trapRescaleFactor
+
+                # save the rescaling factors
+                rescaledCombiScheme.to_csv(rescalingCsvName)
             else:
-                # get from curves by trapezoidal rule
-                raise NotImplementedError
-            # rescale all the component fluxes
-            for probname in combiScheme['probname']:
-                for species in range(get_num_species()):
-                    print("rescaling ", probname, species)
-                    csvRescaleFactor = qesCombined[species] / \
-                        get_qes_csv(qes_results, probname)[species]
-                    trapRescaleFactor = qesCombinedTrap[species] / \
-                        get_qes_trapezoidal(
-                            fluxes, probname, withSIconv=powerNormalization)[species]
-                    if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
-                        print("different rescaling relations! ",
-                              csvRescaleFactor, trapRescaleFactor)
-                    for q in range(len(fluxes[probname][species][QoI])):
-                        # fluxes[probname][species][QoI][q] *= csvRescaleFactor
-                        fluxes[probname][species][QoI][q] *= trapRescaleFactor
+                # get coefficients from stored csv file
+                rescaledCombiScheme = get_combiScheme(
+                    "", rescalingCsvName, dropzeros=True, sumIsOne=False)
+                # rescale all the component QoI
+                for i in range(len(combiScheme['probname'])):
+                    probname = combiScheme['probname'][i]
+                    for species in range(get_num_species()):
+                        print("rescaling ", probname, species)
+                        for q in range(len(fluxes[probname][species][QoI])):
+                            assert(rescaledCombiScheme['probname'][i] == probname)
 
         # In[7]:
         combi_flux = get_combi_flux(fluxes, combiScheme, QoI, Xresampled)
