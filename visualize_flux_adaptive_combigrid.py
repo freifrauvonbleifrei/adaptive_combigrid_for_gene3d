@@ -200,31 +200,36 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
 
     # In[9]:
 
-    for plot_multiplied_by_area in [True, False]:
+    for plot_multiplied_by_area in [False, True]:
+        # can only multiply by area in real space
+        if plot_multiplied_by_area and diagnostics_df["x_axis_name"][diagnostics_index] != "x_a":
+            continue
         svgSuffix = ("_A" if plot_multiplied_by_area else "") + \
             "_" + ("relative" if relativeRescale else "absolute") + \
             "_" + str(rollingAvgNumPoints) + ".svg"
 
-        # # # plot reference results (here diagnostics are appended with "2mw")
-        # # filenames_ref = get_filenames(['1mw'], diagnostics_filename)
-        # # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"], QoI,
-        # #     diagnostics_df['x_axis_name'][diagnostics_index])
-        # # fluxes_ref = fluxes_ref["ref"]
-        # fluxes_ref = [csv_to_flux(
-        #     "heat_flux_seed_ions_converged", ['x_a', "", QoI])]
-        # ref_already_multiplied_by_area = True
-        # do_plot_ref = plot_multiplied_by_area or (
-        #     not ref_already_multiplied_by_area)
-        # do_multiply_ref = plot_multiplied_by_area and not ref_already_multiplied_by_area
-        # if do_plot_ref:
-        #     # plot_ref = get_plot(fluxes_ref[0], label="reference ions", display_legend=True, width=1400)
-        #     plot_ref = get_plot(fluxes_ref[0], label="reference ions", display_legend=True,
-        #                         width=1400, timesArea=do_multiply_ref, timesAreaLabel=plot_multiplied_by_area)
-        #     if get_num_species() > 1:
-        #         plot_ref = add_to_plot(
-        #             plot_ref, fluxes_ref[1], label="reference electrons", display_legend=True, timesArea=do_multiply_ref)
-        #     plot_ref.output_backend = "svg"
-        #     export_svgs([plot_ref], filename=QoI + "_ref" + svgSuffix)
+        do_plot_ref = False
+        if do_plot_ref:
+            # # plot reference results (here diagnostics are appended with "2mw")
+            # filenames_ref = get_filenames([''], diagnostics_filename)
+            # fluxes_ref, _ = filenames_to_fluxes(filenames_ref, ["ref"], QoI,
+            #     diagnostics_df['x_axis_name'][diagnostics_index])
+            # fluxes_ref = fluxes_ref["ref"]
+            fluxes_ref = [csv_to_flux(
+                "heat_flux_seed_ions_converged", ['x_a', "", QoI])]
+            ref_already_multiplied_by_area = False
+            do_plot_ref = plot_multiplied_by_area or (
+                not ref_already_multiplied_by_area)
+            do_multiply_ref = plot_multiplied_by_area and not ref_already_multiplied_by_area
+            if do_plot_ref:
+                # plot_ref = get_plot(fluxes_ref[0], label="reference ions", display_legend=True, width=1400)
+                plot_ref = get_plot(fluxes_ref[0], label="reference ions", display_legend=True,
+                                    width=1400, timesArea=do_multiply_ref, timesAreaLabel=plot_multiplied_by_area)
+                if get_num_species() > 1:
+                    plot_ref = add_to_plot(
+                        plot_ref, fluxes_ref[1], label="reference electrons", display_legend=True, timesArea=do_multiply_ref)
+                plot_ref.output_backend = "svg"
+                export_svgs([plot_ref], filename=QoI + "_ref" + svgSuffix)
 
         # In[10]:
 
@@ -240,15 +245,15 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         # output_notebook()
         # show(plot_combi)
 
-        # if do_plot_ref:
-        #     # have reference and combi plot in one
-        #     plot_combi = add_to_plot(
-        #         plot_combi, fluxes_ref[0], label="reference ions", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
-        #     if get_num_species() > 1:
-        #         plot_combi = add_to_plot(
-        #             plot_combi, fluxes_ref[1], label="reference electrons", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
-        #     export_svgs([plot_combi], filename=QoI + "_" +
-        #                 combiSchemeMode[:-4] + "Combi_and_ref" + svgSuffix)
+        if do_plot_ref:
+            # have reference and combi plot in one
+            plot_combi = add_to_plot(
+                plot_combi, fluxes_ref[0], label="reference ions", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
+            if get_num_species() > 1:
+                plot_combi = add_to_plot(
+                    plot_combi, fluxes_ref[1], label="reference electrons", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
+            export_svgs([plot_combi], filename=QoI + "_" +
+                        combiSchemeMode[:-4] + "Combi_and_ref" + svgSuffix)
 
         # # add "best" component to plot
         # best_component = "prob_8_8_5_5_3"
@@ -319,13 +324,13 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
             plot_scheme_in_one = add_to_plot(
                 plot_scheme_in_one, combi_flux[1], label="combi electrons", color="black", timesArea=plot_multiplied_by_area)
 
-        # if do_plot_ref:
-        #     # add reference plot
-        #     plot_scheme_in_one = add_to_plot(
-        #         plot_scheme_in_one, fluxes_ref[0], label="reference ions", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
-        #     if get_num_species() > 1:
-        #         plot_scheme_in_one = add_to_plot(
-        #             plot_scheme_in_one, fluxes_ref[1], label="reference electrons", display_legend=True, color="pink", timesArea=do_multiply_ref)
+        if do_plot_ref:
+            # add reference plot
+            plot_scheme_in_one = add_to_plot(
+                plot_scheme_in_one, fluxes_ref[0], label="reference ions", display_legend=True, color="turquoise", timesArea=do_multiply_ref)
+            if get_num_species() > 1:
+                plot_scheme_in_one = add_to_plot(
+                    plot_scheme_in_one, fluxes_ref[1], label="reference electrons", display_legend=True, color="pink", timesArea=do_multiply_ref)
 
         plot_scheme_in_one.output_backend = "svg"
         export_svgs([plot_scheme_in_one], filename=QoI + "_" +
