@@ -18,4 +18,4 @@ if yIsX:
     lmax=lmax[1:]
 adapt = dimadapt2d.DimensionalAdaptation(lmin, lmax, output3d=True) #, skiplevels=[[5,5,7,4]])
 
-adapt.run_dimadapt_algorithm(int(environ.get('ADAPTATION_PARAM_MAXIMUM_NUM_GRIDS')))
+adapt.run_dimadapt_algorithm(int(environ.get('ADAPTATION_PARAM_MAXIMUM_NUM_GRIDS'))) #, blocklevels=[[5,5,7,4]])

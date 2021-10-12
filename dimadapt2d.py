@@ -130,7 +130,7 @@ class DimensionalAdaptation:
             self.adaptiveGeneratorElectrons.adaptLevel(l_adapt)
             self.adaptiveSEMElectrons.adaptLevel(l_adapt)
 
-    def run_dimadapt_algorithm(self, numGrids=10):
+    def run_dimadapt_algorithm(self, numGrids=10, blocklevels=[]):
         absAdaptedDelta = 100000. # kinds.default_float_kind.MAX
         totalSEM=-1.
         waitingForResults=False
@@ -221,32 +221,57 @@ class DimensionalAdaptation:
                 relativeAdaptationCriterion = os.environ.get('ADAPTATION_PARAM_RELATIVE_ADAPTATION', 'True').lower() in ['true', '1']
                 activeLevelVectors = self.adaptiveGeneratorIons.getActiveSet()
                 levelIons = self.adaptiveGeneratorIons.getMostRelevant()
+                # do not adapt to anything in blocklevels
+                if levelIons in blocklevels:
+                    currentAbsMaxDelta = 0.
+                    for activeLevelVector in activeLevelVectors:
+                        if ~(activeLevelVector in blocklevels):
+                            pysgppActiveLevelVector = pysgpp.LevelVector(activeLevelVector)
+                            deltaActive = self.adaptiveGeneratorIons.getDelta(pysgppActiveLevelVector)
+                            if not np.isnan(deltaActive):
+                                if abs(deltaActive) > currentAbsMaxDelta:
+                                    currentAbsMaxDelta = abs(relativeDeltaActive)
+                                    levelIons = pysgppActiveLevelVector
                 if relativeAdaptationCriterion:
                     currentAbsRelativeMaxDelta = 0.
                     for activeLevelVector in activeLevelVectors:
-                        pysgppActiveLevelVector = pysgpp.LevelVector(activeLevelVector)
-                        deltaActive = self.adaptiveGeneratorIons.getDelta(pysgppActiveLevelVector)
-                        if not np.isnan(deltaActive):
-                            relativeDeltaActive = deltaActive / \
-                                              self.adaptiveGeneratorIons.getQoIInformation(pysgppActiveLevelVector)
-                            if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
-                                currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
-                                levelIons = pysgppActiveLevelVector
+                        if ~(activeLevelVector in blocklevels):
+                            pysgppActiveLevelVector = pysgpp.LevelVector(activeLevelVector)
+                            deltaActive = self.adaptiveGeneratorIons.getDelta(pysgppActiveLevelVector)
+                            if not np.isnan(deltaActive):
+                                relativeDeltaActive = deltaActive / \
+                                                self.adaptiveGeneratorIons.getQoIInformation(pysgppActiveLevelVector)
+                                if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
+                                    currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
+                                    levelIons = pysgppActiveLevelVector
+                assert(~(levelIons in blocklevels)) # if this assert throws, all candidates for adaptation are in blocklevels
                 deltaIons = self.adaptiveGeneratorIons.getDelta(levelIons)
 
                 if self.num_species > 1:
                     levelElectrons = self.adaptiveGeneratorElectrons.getMostRelevant()
+                    # sorry for code duplication
+                    if levelElectrons in blocklevels:
+                        currentAbsMaxDelta = 0.
+                        for activeLevelVector in activeLevelVectors:
+                            if ~(activeLevelVector in blocklevels):
+                                pysgppActiveLevelVector = pysgpp.LevelVector(activeLevelVector)
+                                deltaActive = self.adaptiveGeneratorElectrons.getDelta(pysgppActiveLevelVector)
+                                if not np.isnan(deltaActive):
+                                    if abs(deltaActive) > currentAbsMaxDelta:
+                                        currentAbsMaxDelta = abs(relativeDeltaActive)
+                                        levelElectrons = pysgppActiveLevelVector
                     if relativeAdaptationCriterion:
                         currentAbsRelativeMaxDelta = 0.
                         for activeLevelVector in activeLevelVectors:
-                            activeLevelVector = pysgpp.LevelVector(activeLevelVector)
-                            deltaActive = self.adaptiveGeneratorIons.getDelta(activeLevelVector)
-                            if not np.isnan(deltaActive):
-                                relativeDeltaActive = deltaActive / \
-                                                   self.adaptiveGeneratorElectrons.getQoIInformation(activeLevelVector)
-                                if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
-                                    currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
-                                    levelElectrons = activeLevelVector
+                            if ~(activeLevelVector in blocklevels):
+                                activeLevelVector = pysgpp.LevelVector(activeLevelVector)
+                                deltaActive = self.adaptiveGeneratorElectrons.getDelta(activeLevelVector)
+                                if not np.isnan(deltaActive):
+                                    relativeDeltaActive = deltaActive / \
+                                                    self.adaptiveGeneratorElectrons.getQoIInformation(activeLevelVector)
+                                    if abs(relativeDeltaActive) > currentAbsRelativeMaxDelta:
+                                        currentAbsRelativeMaxDelta = abs(relativeDeltaActive)
+                                        levelElectrons = activeLevelVector
                     deltaElectrons = self.adaptiveGeneratorElectrons.getDelta(levelElectrons)
 
                 #print(list(i for i in levelElectrons),list(i for i in levelIons))
