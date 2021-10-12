@@ -2,7 +2,7 @@
 
 from write_flux_adaptive_combigrid import get_combiScheme, get_filenames, \
     get_combi_flux, get_qes_csv, get_qes_trapezoidal, printnan, filenames_to_fluxes, \
-    get_cost, get_total_cost, csv_to_flux
+    get_cost, get_total_cost, csv_to_flux, diagnostics_df, diagnostics_dir, rescaleComponentQuantities
 from Qes_data import get_num_species
 import os
 import sys
@@ -31,21 +31,12 @@ bokeh_version = pkg_resources.get_distribution('bokeh').version
 
 # In[3]:
 
-
-diagnostics_dir = './flux_diags/'
-
-diagnostics_df = pd.DataFrame(data={
-    'QoI': ["Q_es", "Qes_ky", "Qem_ky", "Ges_ky", "Gem_ky", "T", "T_b", "n", "n_b"],
-    'y_axis_name': ["Q", "Qes_ky", "Qem_ky", "Ges_ky", "Gem_ky", "T", "T_b", "n", "n_b"],
-    'diagnostics_filename': ["flux_profile_", "flux_spectra_Qes_", "flux_spectra_Qem_", "flux_spectra_Ges_", "flux_spectra_Gem_", "profile_", "profile_", "profile_", "profile_"],
-    'x_axis_name': ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
-
 relativeRescale = os.environ.get('ADAPTATION_POSTPROCESSING_RELATIVE_COMBINATION', 'True').lower() in ['true', '1']
 rollingAvgNumPoints = int(os.environ.get('ADAPTATION_POSTPROCESSING_ROLLING_AVG_NUM_POINTS', '1'))
 
 
 # (relative rescale currently only works for qes diagnostics)
-for diagnostics_index in [0]:  # range(len(diagnostics_df)):
+for diagnostics_index in [0,1,2,3,4]:  # range(len(diagnostics_df)):
     QoI = diagnostics_df['QoI'][diagnostics_index]
     diagnostics_filename = diagnostics_dir + "profile_"
     diagnostics_filename = diagnostics_dir + \
@@ -60,7 +51,7 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         combiSchemeMode = sys.argv[1]
 
     combiScheme = get_combiScheme(
-        prob_prefix, combiSchemeMode, dropzeros=True if combiSchemeMode == 'oldSet.csv' else False)
+        prob_prefix, combiSchemeMode, dropzeros=True)
 
     qes_results = pd.read_csv(os.environ.get(
         'ADAPTATION_RESULTS_CSV'), index_col=0)
@@ -93,42 +84,8 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         diagnostics_df['x_axis_name'][diagnostics_index])
 
     if relativeRescale:
-        powerNormalization = True
-        # get combined average QoI
-        qesCombined = [0.]*get_num_species()
-        qesCombinedTrap = [0.]*get_num_species()
-        if QoI is "Q_es":  # or QoI is "Qes_ky":
-            # read from qes_results.csv
-            for component in combiScheme.itertuples(index=False):
-                probname = component.probname
-                coefficient = float(component.coefficient)
-                qesProb = get_qes_csv(qes_results, probname)
-                qesProbTrap = get_qes_trapezoidal(
-                    fluxes, probname, withSIconv=powerNormalization)
-                print("Qes " + probname + " ", qesProb, qesProbTrap)
-                for species in range(get_num_species()):
-                    qesCombined[species] += coefficient * qesProb[species]
-                    qesCombinedTrap[species] += coefficient * \
-                        qesProbTrap[species]
-            print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
-        else:
-            # get from curves by trapezoidal rule
-            raise NotImplementedError
-        # rescale all the component fluxes
-        for probname in combiScheme['probname']:
-            for species in range(get_num_species()):
-                print("rescaling ", probname, species)
-                csvRescaleFactor = qesCombined[species] / \
-                    get_qes_csv(qes_results, probname)[species]
-                trapRescaleFactor = qesCombinedTrap[species] / \
-                    get_qes_trapezoidal(
-                        fluxes, probname, withSIconv=powerNormalization)[species]
-                if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
-                    print("different rescaling relations! ",
-                          csvRescaleFactor, trapRescaleFactor)
-                for q in range(len(fluxes[probname][species][QoI])):
-                    # fluxes[probname][species][QoI][q] *= csvRescaleFactor
-                    fluxes[probname][species][QoI][q] *= trapRescaleFactor
+        fluxes = rescaleComponentQuantities(
+            fluxes, QoI, qes_results, prob_prefix, combiSchemeMode, combiScheme, powerNormalization=True)
 
     # In[7]:
     combi_flux = get_combi_flux(fluxes, combiScheme, QoI, Xresampled)
@@ -148,7 +105,8 @@ for diagnostics_index in [0]:  # range(len(diagnostics_df)):
         x_range = Range1d(start=x.min(), end=x.max())
         if (diagnostics_df['x_axis_name'][diagnostics_index] == "ky"):
             # , x_axis_type="log") # why won't this work???
-            return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range, y_axis_type="log")
+            x_range = Range1d(start=x.min(), end=x.max()+0.3)
+            return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range, y_range=[1e-5,1e-1], y_axis_type="log")
         else:
             return figure(plot_width=width if width else 1000, plot_height=height if height else 500, x_range=x_range)
 

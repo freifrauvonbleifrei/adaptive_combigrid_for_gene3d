@@ -14,6 +14,7 @@ diagnostics_dir = './flux_diags/'
 
 diagnostics_df = pd.DataFrame(data={
     'QoI': ["Q_es", "Qes_ky", "Qem_ky", "Ges_ky", "Gem_ky", "T", "T_b", "n", "n_b"],
+    'y_axis_name': ["Q", "Qes_ky", "Qem_ky", "Ges_ky", "Gem_ky", "T", "T_b", "n", "n_b"],
     'diagnostics_filename': ["flux_profile_", "flux_spectra_Qes_", "flux_spectra_Qem_", "flux_spectra_Ges_", "flux_spectra_Gem_", "profile_", "profile_", "profile_", "profile_"],
     'x_axis_name': ["x_a", "ky", "ky", "ky", "ky", "x_a", "x_a", "x_a", "x_a"]})
 
@@ -215,16 +216,86 @@ def get_combi_flux(fluxes, combiScheme, QoI, x):
     for species in range(get_num_species()):
         combi_flux_species_list = [fluxes[combiScheme.loc[x]['probname']][species]
                                    [QoI] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
-        combi_si_conv_list = [fluxes[combiScheme.loc[x]['probname']][species]
-                              ["SI_conv"] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
         combi_flux_species = pd.DataFrame(
             data=combi_flux_species_list).sum()
-        combi_si_conv = pd.DataFrame(
-            data=combi_si_conv_list).sum()
-        combi_flux_species = pd.DataFrame(
-            data={QoI: combi_flux_species, 'x_a': x, 'SI_conv': combi_si_conv})
+        if(QoI == 'Q_es'):
+            combi_si_conv_list = [fluxes[combiScheme.loc[x]['probname']][species]
+                                ["SI_conv"] * combiScheme.loc[x]['coefficient'] for x in range(len(fluxes))]
+            combi_si_conv = pd.DataFrame(
+                data=combi_si_conv_list).sum()
+            combi_flux_species = pd.DataFrame(
+                data={QoI: combi_flux_species, 'x_a': x, 'SI_conv': combi_si_conv})
+        else:
+            combi_flux_species = pd.DataFrame(
+                data={QoI: combi_flux_species, 'x_a': x})
         combi_flux.append(combi_flux_species)
     return combi_flux
+
+
+def rescaleComponentQuantities(qtys, QoI, qes_results, prob_prefix, combiSchemeMode, combiScheme, powerNormalization=True):
+    rescalingCsvName = prob_prefix + "rescaled_" + combiSchemeMode
+    if QoI is "Q_es":  # or QoI is "Qes_ky":
+        rescaledCombiScheme = combiScheme.copy()
+        rescaledCombiScheme['rescaleFactor']=rescaledCombiScheme['coefficient']
+        # get combined average QoI
+        qesCombined = [0.]*get_num_species()
+        qesCombinedTrap = [0.]*get_num_species()
+        # read from qes_results.csv
+        for component in combiScheme.itertuples(index=False):
+            probname = component.probname
+            coefficient = float(component.coefficient)
+            qesProb = get_qes_csv(qes_results, probname)
+            qesProbTrap = get_qes_trapezoidal(
+                qtys, probname, withSIconv=powerNormalization)
+            print("Qes " + probname + " ", qesProb, qesProbTrap)
+            for species in range(get_num_species()):
+                qesCombined[species] += coefficient * qesProb[species]
+                qesCombinedTrap[species] += coefficient * \
+                    qesProbTrap[species]
+        print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
+        # rescale all the component fluxes
+        for i in range(len(combiScheme['probname'])):
+            probname = combiScheme['probname'][i]
+            for species in range(get_num_species()):
+                print("rescaling ", probname, species)
+                csvRescaleFactor = qesCombined[species] / \
+                    get_qes_csv(qes_results, probname)[species]
+                trapRescaleFactor = qesCombinedTrap[species] / \
+                    get_qes_trapezoidal(
+                        qtys, probname, withSIconv=powerNormalization)[species]
+                if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
+                    print("different rescaling relations! ",
+                        csvRescaleFactor, trapRescaleFactor)
+                for q in range(len(qtys[probname][species][QoI])):
+                    # qtys[probname][species][QoI][q] *= csvRescaleFactor
+                    qtys[probname][species][QoI][q] *= trapRescaleFactor
+                # store the rescaling factors
+                if species == 0:
+                    assert(rescaledCombiScheme['probname'][i] == probname)
+                    # ic(probname, species, trapRescaleFactor)
+                    # ic(rescaledCombiScheme['coefficient'][i])
+                    # assert (get_num_species() == 1)
+                    #todo think of how to deal with two different rescaling factors from two species??
+                    rescaledCombiScheme['coefficient'][i] *= trapRescaleFactor
+                    rescaledCombiScheme['rescaleFactor'][i] = trapRescaleFactor
+
+        # save the rescaling factors
+        rescaledCombiScheme.to_csv(rescalingCsvName)
+
+    else:
+        # get coefficients from stored csv file
+        rescaledCombiScheme = get_combiScheme(
+            "", rescalingCsvName, dropzeros=True, sumIsOne=False)
+        # rescale all the component QoI
+        for i in range(len(combiScheme['probname'])):
+            probname = combiScheme['probname'][i]
+            for species in range(get_num_species()):
+                print("rescaling ", probname, species)
+                for q in range(len(qtys[probname][species][QoI])):
+                    assert(rescaledCombiScheme['probname'][i] == probname)
+                    qtys[probname][species][QoI][q] *= rescaledCombiScheme['rescaleFactor'][i]
+    # ic(rescaledCombiScheme['coefficient'].sum())
+    return qtys
 
 
 def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
@@ -245,10 +316,6 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
         csv_name = os.environ.get('ADAPTATION_RESULTS_CSV')
         qes_results = pd.read_csv(csv_name, index_col=0)
         printnan(qes_results)
-
-        if (QoI == "Q_es") and relativeRescale:
-            rescaledCombiScheme = combiScheme.copy()
-            rescaledCombiScheme['rescaleFactor']=rescaledCombiScheme['coefficient']
 
         # try printing the computational costs for running the full scheme (including the zero-coefficient grids)
         try:
@@ -272,69 +339,13 @@ def write_flux(combiSchemeMode, startTimeForAverage, endTimeForAverage):
             combiScheme['probname'], diagnostics_filename)
         print(filenames)
 
-        probname = combiScheme['probname'][0]
-
         fluxes, Xresampled = filenames_to_fluxes(
             filenames, combiScheme['probname'], QoI, diagnostics_df['x_axis_name']
             [diagnostics_index])
 
         if relativeRescale:
-            powerNormalization = True
-            rescalingCsvName = prob_prefix + "rescaled_" + combiSchemeMode
-            if QoI is "Q_es":  # or QoI is "Qes_ky":
-                # get combined average QoI
-                qesCombined = [0.]*get_num_species()
-                qesCombinedTrap = [0.]*get_num_species()
-                # read from qes_results.csv
-                for component in combiScheme.itertuples(index=False):
-                    probname = component.probname
-                    coefficient = float(component.coefficient)
-                    qesProb = get_qes_csv(qes_results, probname)
-                    qesProbTrap = get_qes_trapezoidal(
-                        fluxes, probname, withSIconv=powerNormalization)
-                    print("Qes " + probname + " ", qesProb, qesProbTrap)
-                    for species in range(get_num_species()):
-                        qesCombined[species] += coefficient * qesProb[species]
-                        qesCombinedTrap[species] += coefficient * \
-                            qesProbTrap[species]
-                print("qes combined: " + str(qesCombined) + str(qesCombinedTrap))
-                # rescale all the component fluxes
-                for i in range(len(combiScheme['probname'])):
-                    probname = combiScheme['probname'][i]
-                    for species in range(get_num_species()):
-                        print("rescaling ", probname, species)
-                        csvRescaleFactor = qesCombined[species] / \
-                            get_qes_csv(qes_results, probname)[species]
-                        trapRescaleFactor = qesCombinedTrap[species] / \
-                            get_qes_trapezoidal(
-                                fluxes, probname, withSIconv=powerNormalization)[species]
-                        if abs(csvRescaleFactor - trapRescaleFactor) / csvRescaleFactor > 0.1:
-                            print("different rescaling relations! ",
-                                csvRescaleFactor, trapRescaleFactor)
-                        for q in range(len(fluxes[probname][species][QoI])):
-                            # fluxes[probname][species][QoI][q] *= csvRescaleFactor
-                            fluxes[probname][species][QoI][q] *= trapRescaleFactor
-                        # store the rescaling factors
-                        if species == 0:
-                            assert(rescaledCombiScheme['probname'][i] == probname)
-                            # assert (get_num_species() == 1)
-                            #todo think of how to deal with two different rescaling factors from two species??
-                            rescaledCombiScheme['coefficient'][i] *= trapRescaleFactor
-                            rescaledCombiScheme['rescaleFactor'][i] = trapRescaleFactor
-
-                # save the rescaling factors
-                rescaledCombiScheme.to_csv(rescalingCsvName)
-            else:
-                # get coefficients from stored csv file
-                rescaledCombiScheme = get_combiScheme(
-                    "", rescalingCsvName, dropzeros=True, sumIsOne=False)
-                # rescale all the component QoI
-                for i in range(len(combiScheme['probname'])):
-                    probname = combiScheme['probname'][i]
-                    for species in range(get_num_species()):
-                        print("rescaling ", probname, species)
-                        for q in range(len(fluxes[probname][species][QoI])):
-                            assert(rescaledCombiScheme['probname'][i] == probname)
+            fluxes = rescaleComponentQuantities(
+                fluxes, QoI, qes_results, prob_prefix, combiSchemeMode, combiScheme, powerNormalization=True)
 
         # In[7]:
         combi_flux = get_combi_flux(fluxes, combiScheme, QoI, Xresampled)
